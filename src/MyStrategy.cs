@@ -32,6 +32,13 @@ namespace Aicup2020
                     e.EntityType == EntityType.House
                 );
 
+            Entity? builderBase = playerView.Entities
+                .FirstOrDefault(e =>
+                    e.PlayerId == playerView.MyId &&
+                    e.Active &&
+                    e.EntityType == EntityType.BuilderBase
+                );
+
             foreach (var entity in playerView.Entities)
             {
                 if(entity.PlayerId != playerView.MyId)
@@ -48,45 +55,59 @@ namespace Aicup2020
 
                 if (entity.EntityType == EntityType.BuilderUnit)
                 {
-                    if (entitiesToRepair.Count > 0 && 
-                        entitiesToRepair.Any(e => Distance(e.Position, entity.Position) < 10))
+                    double? minDistanceToRepair = entitiesToRepair.Count > 0
+                        ? entitiesToRepair.Min(e => Distance(e.Position, entity.Position))
+                        : (double?) null;
+
+                    if (minDistanceToRepair.HasValue &&
+                        minDistanceToRepair > 2 &&
+                        minDistanceToRepair < properties.SightRange / 2)
                     {
-                        var minDistance = entitiesToRepair.Min(e => Distance(e.Position, entity.Position));
-                        var entityToRepair = entitiesToRepair.First(e => Math.Abs(Distance(e.Position, entity.Position) - minDistance) < 0.001);
-                        moveAction = new MoveAction(entityToRepair.Position, false, false);
-                        repairAction = new RepairAction(entityToRepair.Id);
+                        var entityToRepair = entitiesToRepair.First(
+                            e => Math.Abs(Distance(e.Position, entity.Position) - minDistanceToRepair.Value) < 0.001
+                        );
+                        moveAction = new MoveAction(entityToRepair.Position, true, false);
+
+                        entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
+                        continue;
                     }
-                    else if(entitiesToRepair.Count == 0)
+
+                    if (minDistanceToRepair.HasValue &&
+                        minDistanceToRepair < 2)
                     {
-                        EntityType buildEntityType;
-                        if (houses == 0)
-                        {
-                            buildEntityType = EntityType.House;
-                        }
-                        else
-                        {
-                            buildEntityType = turrets / houses > 2 && houses < 10 ? EntityType.House : EntityType.Turret;
-                        }
-                        
+                        var entityToRepair = entitiesToRepair.First(
+                            e => Math.Abs(Distance(e.Position, entity.Position) - minDistanceToRepair.Value) < 0.001
+                        );
+                        repairAction = new RepairAction(entityToRepair.Id);
+
+                        entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
+                        continue;
+                    }
+
+                    var myPlayer = playerView.Players[playerView.MyId - 1];
+                    var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
+                    var buildEntity = playerView.EntityProperties[buildEntityType];
+
+                    if (myPlayer.Resource >= buildEntity.Cost)
+                    {
                         var position = new Vec2Int(
                             entity.Position.X + properties.Size,
                             entity.Position.Y + properties.Size - 1
                         );
+
                         buildAction = new BuildAction(buildEntityType, position);
-
-
-                        EntityType[] builderTargets = { EntityType.Resource };
-                        attackAction = new AttackAction(null, new AutoAttack(playerView.MapSize, builderTargets));
                     }
-                    else
-                    {
-                        EntityType[] builderTargets = { EntityType.Resource };
-                        attackAction = new AttackAction(null, new AutoAttack(playerView.MapSize, builderTargets));
-                    }
+
+                    EntityType[] builderTargets = { EntityType.Resource };
+                    attackAction = new AttackAction(null, new AutoAttack(playerView.MapSize * 2, builderTargets));
+
+                    entityActions.Add(entity.Id, new EntityAction(null, buildAction, attackAction, null));
+                    continue;
                 }
-                else if (entity.EntityType == EntityType.MeleeUnit || 
-                         entity.EntityType == EntityType.RangedUnit ||
-                         entity.EntityType == EntityType.Turret)
+
+                if (entity.EntityType == EntityType.MeleeUnit || 
+                    entity.EntityType == EntityType.RangedUnit ||
+                    entity.EntityType == EntityType.Turret)
                 {
                     EntityType[] unitTargets = { EntityType.MeleeUnit, EntityType.RangedUnit, EntityType.BuilderUnit };
                     attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
@@ -103,8 +124,8 @@ namespace Aicup2020
                 {
                     var entityType = properties.Build.Value.Options[0];
                     var position = new Vec2Int(
-                        entity.Position.X + properties.Size,
-                        entity.Position.Y + properties.Size - 1
+                        entity.Position.X,
+                        entity.Position.Y - 1
                     );
                     buildAction = new BuildAction(entityType, position);
                 }
@@ -126,6 +147,19 @@ namespace Aicup2020
         {
             return Math.Sqrt((p1.X - p2.X) * (p1.X - p2.X)
                              + (p1.Y - p2.Y) * (p1.Y - p2.Y));
+        }
+
+        public static bool IsInRect(Vec2Int p1, Vec2Int p2, int size)
+        {
+            if (p1.X >= p2.X &&
+                p1.Y >= p2.Y &&
+                p1.X <= p2.X + size &&
+                p1.Y <= p2.Y + size)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
