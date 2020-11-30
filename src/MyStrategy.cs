@@ -49,9 +49,10 @@ namespace Aicup2020
                 if (entity.EntityType == EntityType.BuilderUnit)
                 {
                     if (entitiesToRepair.Count > 0 && 
-                        entitiesToRepair.Min(e => Distance(e.Position, entity.Position) < 100))
+                        entitiesToRepair.Any(e => Distance(e.Position, entity.Position) < 10))
                     {
-                        var entityToRepair = entitiesToRepair.First(e => Distance(e.Position, entity.Position) < 100);
+                        var minDistance = entitiesToRepair.Min(e => Distance(e.Position, entity.Position));
+                        var entityToRepair = entitiesToRepair.First(e => Math.Abs(Distance(e.Position, entity.Position) - minDistance) < 0.001);
                         moveAction = new MoveAction(entityToRepair.Position, false, false);
                         repairAction = new RepairAction(entityToRepair.Id);
                     }
@@ -64,7 +65,7 @@ namespace Aicup2020
                         }
                         else
                         {
-                            buildEntityType = turrets / houses > 2 ? EntityType.House : EntityType.Turret;
+                            buildEntityType = turrets / houses > 2 && houses < 10 ? EntityType.House : EntityType.Turret;
                         }
                         
                         var position = new Vec2Int(
@@ -84,7 +85,8 @@ namespace Aicup2020
                     }
                 }
                 else if (entity.EntityType == EntityType.MeleeUnit || 
-                         entity.EntityType == EntityType.RangedUnit)
+                         entity.EntityType == EntityType.RangedUnit ||
+                         entity.EntityType == EntityType.Turret)
                 {
                     EntityType[] unitTargets = { EntityType.MeleeUnit, EntityType.RangedUnit, EntityType.BuilderUnit };
                     attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
