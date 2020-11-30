@@ -60,8 +60,8 @@ namespace Aicup2020
                         : (double?) null;
 
                     if (minDistanceToRepair.HasValue &&
-                        minDistanceToRepair > 2 &&
-                        minDistanceToRepair < properties.SightRange / 2)
+                        minDistanceToRepair > 1.5 &&
+                        minDistanceToRepair < 4)
                     {
                         var entityToRepair = entitiesToRepair.First(
                             e => Math.Abs(Distance(e.Position, entity.Position) - minDistanceToRepair.Value) < 0.001
@@ -73,7 +73,7 @@ namespace Aicup2020
                     }
 
                     if (minDistanceToRepair.HasValue &&
-                        minDistanceToRepair < 2)
+                        minDistanceToRepair < 1.5)
                     {
                         var entityToRepair = entitiesToRepair.First(
                             e => Math.Abs(Distance(e.Position, entity.Position) - minDistanceToRepair.Value) < 0.001
@@ -95,7 +95,10 @@ namespace Aicup2020
                             entity.Position.Y + properties.Size - 1
                         );
 
-                        buildAction = new BuildAction(buildEntityType, position);
+                        if (!IsInRect(builderBase.Value.Position, position, buildEntity.Size))
+                        {
+                            buildAction = new BuildAction(buildEntityType, position);
+                        }
                     }
 
                     EntityType[] builderTargets = { EntityType.Resource };
@@ -127,6 +130,7 @@ namespace Aicup2020
                         entity.Position.X,
                         entity.Position.Y - 1
                     );
+
                     buildAction = new BuildAction(entityType, position);
                 }
 
