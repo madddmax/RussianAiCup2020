@@ -112,7 +112,13 @@ namespace Aicup2020
                     entity.EntityType == EntityType.RangedUnit ||
                     entity.EntityType == EntityType.Turret)
                 {
-                    EntityType[] unitTargets = { EntityType.MeleeUnit, EntityType.RangedUnit, EntityType.BuilderUnit };
+                    EntityType[] unitTargets =
+                    {
+                        EntityType.MeleeUnit, 
+                        EntityType.RangedUnit, 
+                        EntityType.BuilderUnit, 
+                        EntityType.Turret
+                    };
                     attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
                 }
                 else if (entity.EntityType == EntityType.MeleeBase)
