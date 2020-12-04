@@ -86,11 +86,15 @@ namespace Aicup2020
 
                     case EntityType.BuilderUnit:
                     {
-                        moveAction = GetMoveAction(entity, BuilderUnitEval);
+                        attackAction = GetBuilderUnitAttackAction(entity);
+                        if (attackAction != null)
+                        {
+                            entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
+                            continue;
+                        }
 
-                        EntityType[] resource = { EntityType.Resource };
-                        attackAction = new AttackAction(null, new AutoAttack(1, resource));
-                        entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
+                        moveAction = GetMoveAction(entity, BuilderUnitMoveEval);
+                        entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
                         continue;
                     }
 
@@ -156,6 +160,78 @@ namespace Aicup2020
             }
         }
 
+        private static AttackAction? GetBuilderUnitAttackAction(Entity entity)
+        {
+            AttackAction? attackAction = null;
+
+            var leftEntity = entity.Position.X + 1 < 80
+                ? Map[entity.Position.X + 1, entity.Position.Y]
+                : null;
+
+            var upEntity = entity.Position.Y - 1 >= 0
+                ? Map[entity.Position.X, entity.Position.Y - 1]
+                : null;
+
+            var rightEntity = entity.Position.X - 1 >= 0
+                ? Map[entity.Position.X - 1, entity.Position.Y]
+                : null;
+
+            var downEntity = entity.Position.Y + 1 < 80
+                ? Map[entity.Position.X, entity.Position.Y + 1]
+                : null;
+
+            var leftEval = leftEntity != null && leftEntity.Value.EntityType == EntityType.Resource
+                ? 30 / leftEntity.Value.Health
+                : int.MinValue;
+
+            var upEval = upEntity != null && upEntity.Value.EntityType == EntityType.Resource
+                ? 30 / upEntity.Value.Health
+                : int.MinValue;
+
+            var rightEval = rightEntity != null && rightEntity.Value.EntityType == EntityType.Resource
+                ? 30 / rightEntity.Value.Health
+                : int.MinValue;
+
+            var downEval = downEntity != null && downEntity.Value.EntityType == EntityType.Resource
+                ? 30 / downEntity.Value.Health
+                : int.MinValue;
+
+            if (leftEntity != null &&
+                leftEval != int.MinValue &&
+                leftEval >= upEval &&
+                leftEval >= rightEval &&
+                leftEval >= downEval)
+            {
+                attackAction = new AttackAction(leftEntity.Value.Id, null);
+            }
+            else if (upEntity != null &&
+                     upEval != int.MinValue &&
+                     upEval >= leftEval &&
+                     upEval >= rightEval &&
+                     upEval >= downEval)
+            {
+                attackAction = new AttackAction(upEntity.Value.Id, null);
+            }
+            else if (rightEntity != null &&
+                     rightEval != int.MinValue &&
+                     rightEval >= upEval &&
+                     rightEval >= leftEval &&
+                     rightEval >= downEval)
+            {
+                attackAction = new AttackAction(rightEntity.Value.Id, null);
+            }
+            else if (downEntity != null &&
+                     downEval != int.MinValue &&
+                     downEval >= upEval &&
+                     downEval >= rightEval &&
+                     downEval >= leftEval)
+            {
+                attackAction = new AttackAction(downEntity.Value.Id, null);
+            }
+
+            return attackAction;
+        }
+
         private static MoveAction? GetMoveAction(Entity entity, Func<Entity, int, int, int> getEval)
         {
             MoveAction? moveAction = null;
@@ -212,58 +288,70 @@ namespace Aicup2020
                 ? rightDownEval + leftDownEval
                 : int.MinValue;
 
-            if (leftEval > upEval &&
-                leftEval > rightEval &&
-                leftEval > downEval)
+            if (leftEval != int.MinValue &&
+                leftEval >= upEval &&
+                leftEval >= rightEval &&
+                leftEval >= downEval)
             {
                 moveAction = new MoveAction(new Vec2Int(entity.Position.X + 1, entity.Position.Y), false,
                     false);
             }
-            else if (upEval > leftEval &&
-                     upEval > rightEval &&
-                     upEval > downEval)
+            else if (upEval != int.MinValue &&
+                     upEval >= leftEval &&
+                     upEval >= rightEval &&
+                     upEval >= downEval)
             {
                 moveAction = new MoveAction(new Vec2Int(entity.Position.X, entity.Position.Y - 1), false,
                     false);
             }
-            else if (rightEval > upEval &&
-                     rightEval > leftEval &&
-                     rightEval > downEval)
+            else if (rightEval != int.MinValue &&
+                     rightEval >= upEval &&
+                     rightEval >= leftEval &&
+                     rightEval >= downEval)
             {
                 moveAction = new MoveAction(new Vec2Int(entity.Position.X - 1, entity.Position.Y), false,
                     false);
             }
-            else if (downEval > upEval &&
-                     downEval > rightEval &&
-                     downEval > leftEval)
+            else if (downEval != int.MinValue &&
+                     downEval >= upEval &&
+                     downEval >= rightEval &&
+                     downEval >= leftEval)
             {
                 moveAction = new MoveAction(new Vec2Int(entity.Position.X, entity.Position.Y + 1), false,
                     false);
             }
 
+            if (moveAction != null)
+            {
+                Map[entity.Position.X, entity.Position.Y] = null;
+                Map[moveAction.Value.Target.X, moveAction.Value.Target.Y] = entity;
+            }
+
             return moveAction;
         }
 
-        private static int BuilderUnitEval(Entity entity, int x, int y)
+        private static int BuilderUnitMoveEval(Entity entity, int x, int y)
         {
-            if (Map[x, y] == null)
+            if (Map[x, y] == null || 
+                entity.Position.X == x && 
+                entity.Position.Y == y)
             {
                 return 0;
             }
 
             int eval = 0;
             var entityOnMap = Map[x, y].Value;
+            var distance = GetDistance(entity.Position, x, y);
 
             if (entityOnMap.EntityType == EntityType.Resource)
             {
-                var distance = GetDistance(entity.Position, x, y);
                 eval += entityOnMap.Health / distance;
             }
 
             if (entityOnMap.EntityType == EntityType.BuilderUnit &&
                 entityOnMap.PlayerId == MyId)
             {
-                eval -= entityOnMap.Health;
+                eval -= entityOnMap.Health / distance;
             }
 
             return eval;
