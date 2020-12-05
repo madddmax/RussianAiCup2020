@@ -10,6 +10,10 @@ namespace Aicup2020
     {
         private static readonly Entity?[,] Map = new Entity?[80, 80];
 
+        public static Dictionary<int, EntityAction> PrevEntityActions = new Dictionary<int, EntityAction>();
+
+        private static readonly Vec2Int MyBase = new Vec2Int(1, 1);
+
         public static int MyId;
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
@@ -18,12 +22,6 @@ namespace Aicup2020
             MyId = playerView.MyId;
 
             var entityActions = new Dictionary<int, EntityAction>();
-
-            var entitiesToRepair = playerView.Entities
-                .Where(e =>
-                    e.PlayerId == MyId &&
-                    e.Health < playerView.EntityProperties[e.EntityType].MaxHealth
-                ).ToList();
 
             var turrets = playerView.Entities
                 .Count(e =>
@@ -39,31 +37,57 @@ namespace Aicup2020
                     e.EntityType == EntityType.House
                 );
 
-            Entity? builderBase = playerView.Entities
-                .FirstOrDefault(e =>
-                    e.PlayerId == MyId &&
-                    e.Active &&
-                    e.EntityType == EntityType.BuilderBase
-                );
 
+            Entity? builderUnit = null;
+            int minDistance = int.MaxValue;
             foreach (Entity entity in playerView.Entities)
             {
-                if (entity.PlayerId != null && entity.PlayerId != MyId)
+                if (entity.PlayerId != MyId || 
+                    entity.EntityType != EntityType.BuilderUnit)
                 {
                     continue;
                 }
 
+                if (PrevEntityActions.TryGetValue(entity.Id, out var entityAction) && 
+                    entityAction.MoveAction != null)
+                {
+                    int distance = GetDistance(entity.Position, MyBase);
+                    if (distance < minDistance)
+                    {
+                        // todo unit unable to build
+                        builderUnit = entity;
+                        minDistance = distance;
+                    }
+                }
+            }
+
+            if (builderUnit != null)
+            {
+                var myPlayer = playerView.Players[MyId - 1];
+                //var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
+                var buildEntityType = EntityType.House;
+                var buildEntity = playerView.EntityProperties[buildEntityType];
+
+                if (myPlayer.Resource >= buildEntity.Cost)
+                {
+                    var position = new Vec2Int(
+                        builderUnit.Value.Position.X + 1,
+                        builderUnit.Value.Position.Y
+                    );
+                    var buildAction = new BuildAction(buildEntityType, position);
+                    entityActions.Add(builderUnit.Value.Id, new EntityAction(null, buildAction, null, null));
+                }
+            }
+
+
+            foreach (Entity entity in playerView.Entities)
+            {
                 if (entity.PlayerId != MyId)
                 {
                     continue;
                 }
 
                 var properties = playerView.EntityProperties[entity.EntityType];
-
-                MoveAction? moveAction = null;
-                BuildAction? buildAction = null;
-                AttackAction? attackAction = null;
-                RepairAction? repairAction = null;
 
                 switch (entity.EntityType)
                 {
@@ -80,21 +104,15 @@ namespace Aicup2020
                             entity.Position.Y - 1
                         );
 
-                        buildAction = new BuildAction(entityType, position);
+                        var buildAction = new BuildAction(entityType, position);
                         entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
                         continue;
 
                     case EntityType.BuilderUnit:
                     {
-                        attackAction = GetBuilderUnitAttackAction(entity);
-                        if (attackAction != null)
-                        {
-                            entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
-                            continue;
-                        }
-
-                        moveAction = GetMoveAction(entity, BuilderUnitMoveEval);
-                        entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
+                        SetBuilderRepairAction(entity, entityActions);
+                        SetBuilderAttackAction(entity, entityActions);
+                        SetMoveAction(entity, entityActions, BuilderUnitMoveEval);
                         continue;
                     }
 
@@ -121,12 +139,13 @@ namespace Aicup2020
                             EntityType.BuilderUnit,
                             EntityType.Turret
                         };
-                        attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
+                        var attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
                         entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
                         continue;
                 }
             }
 
+            PrevEntityActions = entityActions;
             return new Action(entityActions);
         }
 
@@ -160,8 +179,61 @@ namespace Aicup2020
             }
         }
 
-        private static AttackAction? GetBuilderUnitAttackAction(Entity entity)
+        private static void SetBuilderRepairAction(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
+            RepairAction? repairAction = null;
+
+            var leftEntity = entity.Position.X + 1 < 80
+                ? Map[entity.Position.X + 1, entity.Position.Y]
+                : null;
+
+            var upEntity = entity.Position.Y - 1 >= 0
+                ? Map[entity.Position.X, entity.Position.Y - 1]
+                : null;
+
+            var rightEntity = entity.Position.X - 1 >= 0
+                ? Map[entity.Position.X - 1, entity.Position.Y]
+                : null;
+
+            var downEntity = entity.Position.Y + 1 < 80
+                ? Map[entity.Position.X, entity.Position.Y + 1]
+                : null;
+
+            if (leftEntity != null && !leftEntity.Value.Active)
+            {
+                repairAction = new RepairAction(leftEntity.Value.Id);
+            }
+            else if (upEntity != null && !upEntity.Value.Active)
+            {
+                repairAction = new RepairAction(upEntity.Value.Id);
+            }
+            else if (rightEntity != null && !rightEntity.Value.Active)
+            {
+                repairAction = new RepairAction(rightEntity.Value.Id);
+            }
+            else if (downEntity != null && !downEntity.Value.Active)
+            {
+                repairAction = new RepairAction(downEntity.Value.Id);
+            }
+
+            if (repairAction != null)
+            {
+                entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
+            }
+        }
+
+        private static void SetBuilderAttackAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
             AttackAction? attackAction = null;
 
             var leftEntity = entity.Position.X + 1 < 80
@@ -229,11 +301,19 @@ namespace Aicup2020
                 attackAction = new AttackAction(downEntity.Value.Id, null);
             }
 
-            return attackAction;
+            if (attackAction != null)
+            {
+                entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
+            }
         }
 
-        private static MoveAction? GetMoveAction(Entity entity, Func<Entity, int, int, int> getEval)
+        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions, Func<Entity, int, int, int> getEval)
         {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
             MoveAction? moveAction = null;
 
             int leftUpEval = 0;
@@ -327,7 +407,7 @@ namespace Aicup2020
                 Map[moveAction.Value.Target.X, moveAction.Value.Target.Y] = entity;
             }
 
-            return moveAction;
+            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
         private static int BuilderUnitMoveEval(Entity entity, int x, int y)
@@ -356,6 +436,8 @@ namespace Aicup2020
 
             return eval;
         }
+
+        public static int GetDistance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
 
         public static int GetDistance(Vec2Int p1, int x, int y) => Math.Abs(p1.X - x) + Math.Abs(p1.Y - y);
 
