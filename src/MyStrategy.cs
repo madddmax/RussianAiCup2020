@@ -8,6 +8,15 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
+        public class ScoreCell
+        {
+            public Entity? Entity;
+            public int ResourceScore;
+            // other scores
+        }
+
+        private static readonly ScoreCell[,] ScoreMap = new ScoreCell[80, 80];
+
         private static readonly Entity?[,] Map = new Entity?[80, 80];
 
         public static Dictionary<int, EntityAction> PrevEntityActions = new Dictionary<int, EntityAction>();
@@ -19,6 +28,7 @@ namespace Aicup2020
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
             InitMap(playerView);
+            InitScoreMap(playerView);
             MyId = playerView.MyId;
 
             var entityActions = new Dictionary<int, EntityAction>();
@@ -179,6 +189,92 @@ namespace Aicup2020
             }
         }
 
+        private static void InitScoreMap(PlayerView playerView)
+        {
+            for (int y = 0; y < 80; y++)
+            {
+                for (int x = 0; x < 80; x++)
+                {
+                    ScoreMap[x, y] = new ScoreCell
+                    {
+                        Entity = null,
+                        ResourceScore = 0
+                    };
+                }
+            }
+
+            foreach (Entity entity in playerView.Entities)
+            {
+                var properties = playerView.EntityProperties[entity.EntityType];
+                if (properties.Size > 1)
+                {
+                    for (int y = entity.Position.Y; y < entity.Position.Y + properties.Size; y++)
+                    {
+                        for (int x = entity.Position.X; x < entity.Position.X + properties.Size; x++)
+                        {
+                            ScoreMap[x, y].Entity = entity;
+                        }
+                    }
+                }
+                else
+                {
+                    ScoreMap[entity.Position.X, entity.Position.Y].Entity = entity;
+                }
+            }
+
+            for (int y = 0; y < 80; y++)
+            {
+                for (int x = 0; x < 80; x++)
+                {
+                    if (ScoreMap[x, y].Entity == null)
+                    {
+                        continue;
+                    }
+
+                    Entity entity = ScoreMap[x, y].Entity.Value;
+                    if (entity.EntityType == EntityType.Resource)
+                    {
+                        int leftX = entity.Position.X + 1;
+                        int leftY = entity.Position.Y;
+                        if (leftX < 80 && ResourceEval(leftX, leftY))
+                        {
+                            ScoreMap[leftX, leftY].ResourceScore = 1;
+                        }
+
+                        int upX = entity.Position.X;
+                        int upY = entity.Position.Y - 1;
+                        if (upY >= 0 && ResourceEval(upX, upY))
+                        {
+                            ScoreMap[upX, upY].ResourceScore = 1;
+                        }
+
+                        int rightX = entity.Position.X - 1;
+                        int rightY = entity.Position.Y;
+                        if (rightX >= 0 && ResourceEval(rightX, rightY))
+                        {
+                            ScoreMap[rightX, rightY].ResourceScore = 1;
+                        }
+
+                        int downX = entity.Position.X;
+                        int downY = entity.Position.Y + 1;
+                        if (downY < 80 && ResourceEval(downX, downY))
+                        {
+                            ScoreMap[downX, downY].ResourceScore = 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static bool ResourceEval(int x, int y)
+        {
+            Entity? entity = ScoreMap[x, y].Entity;
+            return entity == null ||
+                   entity.Value.EntityType == EntityType.BuilderUnit ||
+                   entity.Value.EntityType == EntityType.MeleeUnit ||
+                   entity.Value.EntityType == EntityType.RangedUnit;
+        }
+
         private static void SetBuilderRepairAction(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
@@ -313,6 +409,12 @@ namespace Aicup2020
             {
                 return;
             }
+
+            for (int i = 0; i < 10; i++)
+            {
+                // todo
+            }
+
 
             MoveAction? moveAction = null;
 
