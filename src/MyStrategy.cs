@@ -61,7 +61,7 @@ namespace Aicup2020
                 if (PrevEntityActions.TryGetValue(entity.Id, out var entityAction) && 
                     entityAction.MoveAction != null)
                 {
-                    int distance = GetDistance(entity.Position, MyBase);
+                    int distance = Distance(entity.Position, MyBase);
                     if (distance < minDistance)
                     {
                         // todo unit unable to build
@@ -78,7 +78,7 @@ namespace Aicup2020
                 var buildEntityType = EntityType.House;
                 var buildEntity = playerView.EntityProperties[buildEntityType];
 
-                if (myPlayer.Resource >= buildEntity.Cost)
+                if (myPlayer.Resource >= buildEntity.InitialCost)
                 {
                     var position = new Vec2Int(
                         builderUnit.Value.Position.X + 1,
@@ -122,7 +122,7 @@ namespace Aicup2020
                     {
                         SetBuilderRepairAction(entity, entityActions);
                         SetBuilderAttackAction(entity, entityActions);
-                        SetMoveAction(entity, entityActions, BuilderUnitMoveEval);
+                        SetMoveAction(entity, entityActions);
                         continue;
                     }
 
@@ -403,145 +403,96 @@ namespace Aicup2020
             }
         }
 
-        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions, Func<Entity, int, int, int> getEval)
+        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
                 return;
             }
 
-            for (int i = 0; i < 10; i++)
+            // AStarSearch
+            Vec2Int? moveTarget = null;
+
+            var frontier = new PriorityQueue<Vec2Int>();
+            frontier.Enqueue(entity.Position, 0);
+
+            //var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
+            var costSoFar = new Dictionary<Vec2Int, int>();
+
+            //cameFrom[entity.Position] = entity.Position;
+            costSoFar[entity.Position] = 0;
+
+            while (frontier.Count > 0)
             {
-                // todo
-            }
+                var current = frontier.Dequeue();
 
-
-            MoveAction? moveAction = null;
-
-            int leftUpEval = 0;
-            for (int y = entity.Position.Y; y >= entity.Position.Y - 10 && y >= 0; y--)
-            {
-                for (int x = entity.Position.X; x <= entity.Position.X + 10 && x < 80; x++)
+                if (ScoreMap[current.X, current.Y].ResourceScore > 0)
                 {
-                    leftUpEval += getEval(entity, x, y);
+                    moveTarget = current;
+                    break;
+                }
+
+                foreach (Vec2Int next in Neighbors(current))
+                {
+                    int newCost = costSoFar[current] + 1;
+                    if (Passable(next) && (!costSoFar.ContainsKey(next) || newCost < costSoFar[next]))
+                    {
+                        costSoFar[next] = newCost;
+                        frontier.Enqueue(next, newCost);
+                        //cameFrom[next] = current;
+                    }
                 }
             }
 
-            int rightUpEval = 0;
-            for (int y = entity.Position.Y; y >= entity.Position.Y - 10 && y >= 0; y--)
-            {
-                for (int x = entity.Position.X; x >= entity.Position.X - 10 && x >= 0; x--)
-                {
-                    rightUpEval += getEval(entity, x, y);
-                }
-            }
+            //if (moveTarget != null)
+            //{
+            //    Map[entity.Position.X, entity.Position.Y] = null;
+            //    Map[moveTarget.X, moveTarget.Y] = entity;
+            //}
 
-            int rightDownEval = 0;
-            for (int y = entity.Position.Y; y <= entity.Position.Y + 10 && y < 80; y++)
-            {
-                for (int x = entity.Position.X; x >= entity.Position.X - 10 && x >= 0; x--)
-                {
-                    rightDownEval += getEval(entity, x, y);
-                }
-            }
-
-            int leftDownEval = 0;
-            for (int y = entity.Position.Y; y <= entity.Position.Y + 10 && y < 80; y++)
-            {
-                for (int x = entity.Position.X; x <= entity.Position.X + 10 && x < 80; x++)
-                {
-                    leftDownEval += getEval(entity, x, y);
-                }
-            }
-
-            int leftEval = entity.Position.X + 1 < 80 && Map[entity.Position.X + 1, entity.Position.Y] == null
-                ? leftUpEval + leftDownEval
-                : int.MinValue;
-
-            int upEval = entity.Position.Y - 1 >= 0 && Map[entity.Position.X, entity.Position.Y - 1] == null
-                ? leftUpEval + rightUpEval
-                : int.MinValue;
-
-            int rightEval = entity.Position.X - 1 >= 0 && Map[entity.Position.X - 1, entity.Position.Y] == null
-                ? rightUpEval + rightDownEval
-                : int.MinValue;
-
-            int downEval = entity.Position.Y + 1 < 80 && Map[entity.Position.X, entity.Position.Y + 1] == null
-                ? rightDownEval + leftDownEval
-                : int.MinValue;
-
-            if (leftEval != int.MinValue &&
-                leftEval >= upEval &&
-                leftEval >= rightEval &&
-                leftEval >= downEval)
-            {
-                moveAction = new MoveAction(new Vec2Int(entity.Position.X + 1, entity.Position.Y), false,
-                    false);
-            }
-            else if (upEval != int.MinValue &&
-                     upEval >= leftEval &&
-                     upEval >= rightEval &&
-                     upEval >= downEval)
-            {
-                moveAction = new MoveAction(new Vec2Int(entity.Position.X, entity.Position.Y - 1), false,
-                    false);
-            }
-            else if (rightEval != int.MinValue &&
-                     rightEval >= upEval &&
-                     rightEval >= leftEval &&
-                     rightEval >= downEval)
-            {
-                moveAction = new MoveAction(new Vec2Int(entity.Position.X - 1, entity.Position.Y), false,
-                    false);
-            }
-            else if (downEval != int.MinValue &&
-                     downEval >= upEval &&
-                     downEval >= rightEval &&
-                     downEval >= leftEval)
-            {
-                moveAction = new MoveAction(new Vec2Int(entity.Position.X, entity.Position.Y + 1), false,
-                    false);
-            }
-
-            if (moveAction != null)
-            {
-                Map[entity.Position.X, entity.Position.Y] = null;
-                Map[moveAction.Value.Target.X, moveAction.Value.Target.Y] = entity;
-            }
-
+            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
-        private static int BuilderUnitMoveEval(Entity entity, int x, int y)
+        public static List<Vec2Int> Neighbors(Vec2Int p)
         {
-            if (Map[x, y] == null || 
-                entity.Position.X == x && 
-                entity.Position.Y == y)
+            var neighbors = new List<Vec2Int>();
+
+            // left
+            if (p.X + 1 < 80)
             {
-                return 0;
+                neighbors.Add(new Vec2Int(p.X + 1, p.Y));
             }
 
-            int eval = 0;
-            var entityOnMap = Map[x, y].Value;
-            var distance = GetDistance(entity.Position, x, y);
-
-            if (entityOnMap.EntityType == EntityType.Resource)
+            // up
+            if (p.Y - 1 >= 0)
             {
-                eval += entityOnMap.Health / distance;
+                neighbors.Add(new Vec2Int(p.X, p.Y - 1));
             }
 
-            if (entityOnMap.EntityType == EntityType.BuilderUnit &&
-                entityOnMap.PlayerId == MyId)
+            // right
+            if (p.X - 1 >= 0)
             {
-                eval -= entityOnMap.Health / distance;
+                neighbors.Add(new Vec2Int(p.X - 1, p.Y));
             }
 
-            return eval;
+            // down
+            if (p.Y + 1 < 80)
+            {
+                neighbors.Add(new Vec2Int(p.X, p.Y + 1));
+            }
+
+            return neighbors;
         }
 
-        public static int GetDistance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+        public static bool Passable(Vec2Int p)
+        {
+            return ScoreMap[p.X, p.Y].Entity == null;
+        }
 
-        public static int GetDistance(Vec2Int p1, int x, int y) => Math.Abs(p1.X - x) + Math.Abs(p1.Y - y);
+        public static int Distance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+
+        public static int Distance(Vec2Int p1, int x, int y) => Math.Abs(p1.X - x) + Math.Abs(p1.Y - y);
 
         public void DebugUpdate(PlayerView playerView, DebugInterface debugInterface) 
         {
