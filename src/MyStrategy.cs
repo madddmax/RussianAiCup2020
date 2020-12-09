@@ -23,26 +23,33 @@ namespace Aicup2020
 
         public static int MyId;
 
+        public static int MyResource;
+
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
             InitMap(playerView);
             InitScoreMap(playerView);
             MyId = playerView.MyId;
+            MyResource = playerView.Players[MyId - 1].Resource;
 
             var entityActions = new Dictionary<int, EntityAction>();
 
-            var turrets = playerView.Entities
+            int availableLimit = playerView.Entities
                 .Count(e =>
                     e.PlayerId == MyId &&
                     e.Active &&
-                    e.EntityType == EntityType.Turret
-                );
+                    (e.EntityType == EntityType.BuilderBase ||
+                     e.EntityType == EntityType.MeleeBase ||
+                     e.EntityType == EntityType.RangedBase ||
+                     e.EntityType == EntityType.House)
+                ) * 5;
 
-            var houses = playerView.Entities
+            int limit = playerView.Entities
                 .Count(e =>
                     e.PlayerId == MyId &&
-                    e.Active &&
-                    e.EntityType == EntityType.House
+                    (e.EntityType == EntityType.BuilderUnit ||
+                     e.EntityType == EntityType.MeleeUnit ||
+                     e.EntityType == EntityType.RangedUnit)
                 );
 
             var builders = playerView.Entities
@@ -50,16 +57,16 @@ namespace Aicup2020
                     e.PlayerId == MyId &&
                     e.EntityType == EntityType.BuilderUnit
                 )
-                .OrderBy(e => Distance(e.Position, MyBase));
+                .OrderBy(e => Distance(e.Position, MyBase))
+                .ToList();
 
             foreach (Entity builder in builders)
             {
-                var myPlayer = playerView.Players[MyId - 1];
                 //var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
                 var buildEntityType = EntityType.House;
                 var buildEntity = playerView.EntityProperties[buildEntityType];
 
-                if (myPlayer.Resource >= buildEntity.InitialCost)
+                if (MyResource >= buildEntity.InitialCost && limit >= availableLimit - 10)
                 {
                     var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
                     var buildingNeighbors = Neighbors(buildPosition, buildEntity.Size);
@@ -68,6 +75,9 @@ namespace Aicup2020
                     {
                         var buildAction = new BuildAction(buildEntityType, buildPosition);
                         entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
+
+                        BuildLeft(buildPosition, buildEntity.Size);
+                        MyResource -= buildEntity.InitialCost;
                         break;
                     }
                 }
@@ -95,13 +105,20 @@ namespace Aicup2020
                         
                         BuildAction? buildAction = null;
 
-                        var neighbors = Neighbors(entity.Position, properties.Size);
-                        foreach (var position in neighbors)
+                        var builderProperties = playerView.EntityProperties[EntityType.BuilderUnit];
+                        if (MyResource >= builderProperties.InitialCost + builders.Count)
                         {
-                            if (Passable(position))
+                            var neighbors = Neighbors(entity.Position, properties.Size);
+                            foreach (var position in neighbors)
                             {
-                                buildAction = new BuildAction(EntityType.BuilderUnit, position);
-                                break;
+                                if (Passable(position))
+                                {
+                                    buildAction = new BuildAction(EntityType.BuilderUnit, position);
+
+                                    BuildLeft(position, 1);
+                                    MyResource -= builderProperties.InitialCost + builders.Count;
+                                    break;
+                                }
                             }
                         }
 
@@ -556,6 +573,17 @@ namespace Aicup2020
             }
 
             return true;
+        }
+
+        public static void BuildLeft(Vec2Int p, int size)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    ScoreMap[p.X + x, p.Y + y].Entity = new Entity();
+                }
+            }
         }
 
         public static int Distance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
