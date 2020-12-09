@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Aicup2020.Model;
@@ -19,9 +19,7 @@ namespace Aicup2020
 
         private static readonly Entity?[,] Map = new Entity?[80, 80];
 
-        public static Dictionary<int, EntityAction> PrevEntityActions = new Dictionary<int, EntityAction>();
-
-        private static readonly Vec2Int MyBase = new Vec2Int(1, 1);
+        private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
         public static int MyId;
 
@@ -48,8 +46,8 @@ namespace Aicup2020
                 );
 
 
-            Entity? builderUnit = null;
-            int minDistance = int.MaxValue;
+            //Entity? builderUnit = null;
+            //int minDistance = int.MaxValue;
             foreach (Entity entity in playerView.Entities)
             {
                 if (entity.PlayerId != MyId || 
@@ -58,21 +56,14 @@ namespace Aicup2020
                     continue;
                 }
 
-                if (PrevEntityActions.TryGetValue(entity.Id, out var entityAction) && 
-                    entityAction.MoveAction != null)
-                {
-                    int distance = Distance(entity.Position, MyBase);
-                    if (distance < minDistance)
-                    {
-                        // todo unit unable to build
-                        builderUnit = entity;
-                        minDistance = distance;
-                    }
-                }
-            }
+                //int distance = Distance(entity.Position, MyBase);
+                //if (distance < minDistance)
+                //{
+                //    // todo unit unable to build
+                //    builderUnit = entity;
+                //    minDistance = distance;
+                //}
 
-            if (builderUnit != null)
-            {
                 var myPlayer = playerView.Players[MyId - 1];
                 //var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
                 var buildEntityType = EntityType.House;
@@ -80,12 +71,15 @@ namespace Aicup2020
 
                 if (myPlayer.Resource >= buildEntity.InitialCost)
                 {
-                    var position = new Vec2Int(
-                        builderUnit.Value.Position.X + 1,
-                        builderUnit.Value.Position.Y
-                    );
-                    var buildAction = new BuildAction(buildEntityType, position);
-                    entityActions.Add(builderUnit.Value.Id, new EntityAction(null, buildAction, null, null));
+                    var position = new Vec2Int(entity.Position.X + 1, entity.Position.Y);
+
+                    // todo проверка buildEntity.Size + 1 чтобы здания вплотную друг к другу не строить только низ проверяет, а надо другие стороны не учитывая юнитов.
+                    if (Passable(position) && PassableLeft(position, buildEntity.Size + 1))
+                    {
+                        var buildAction = new BuildAction(buildEntityType, position);
+                        entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
+                        break;
+                    }
                 }
             }
 
@@ -108,13 +102,19 @@ namespace Aicup2020
                         continue;
 
                     case EntityType.BuilderBase:
-                        var entityType = properties.Build.Value.Options[0];
-                        var position = new Vec2Int(
-                            entity.Position.X,
-                            entity.Position.Y - 1
-                        );
+                        
+                        BuildAction? buildAction = null;
 
-                        var buildAction = new BuildAction(entityType, position);
+                        var neighbors = Neighbors(entity.Position, properties.Size);
+                        foreach (var position in neighbors)
+                        {
+                            if (Passable(position))
+                            {
+                                buildAction = new BuildAction(EntityType.BuilderUnit, position);
+                                break;
+                            }
+                        }
+
                         entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
                         continue;
 
@@ -155,7 +155,6 @@ namespace Aicup2020
                 }
             }
 
-            PrevEntityActions = entityActions;
             return new Action(entityActions);
         }
 
@@ -485,9 +484,78 @@ namespace Aicup2020
             return neighbors;
         }
 
+        public static List<Vec2Int> Neighbors(Vec2Int p, int size)
+        {
+            var neighbors = new List<Vec2Int>();
+
+            // left
+            if (p.X + size < 80)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
+                }
+            }
+
+            // up
+            if (p.Y - 1 >= 0)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    neighbors.Add(new Vec2Int(p.X + i, p.Y - 1));
+                }
+            }
+
+            // right
+            if (p.X - 1 >= 0)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    neighbors.Add(new Vec2Int(p.X - 1, p.Y + i));
+                }
+            }
+
+            // down
+            if (p.Y + size < 80)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    neighbors.Add(new Vec2Int(p.X + i, p.Y + size));
+                }
+            }
+
+            return neighbors;
+        }
+
         public static bool Passable(Vec2Int p)
         {
             return ScoreMap[p.X, p.Y].Entity == null;
+        }
+
+        public static bool PassableLeft(Vec2Int p, int size)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                if (p.X + x >= 80)
+                {
+                    return false;
+                }
+
+                for (int y = 0; y < size; y++)
+                {
+                    if (p.Y + y >= 80)
+                    {
+                        return false;
+                    }
+
+                    if (ScoreMap[p.X + x, p.Y + y].Entity != null)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         public static int Distance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
