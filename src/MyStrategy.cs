@@ -45,25 +45,15 @@ namespace Aicup2020
                     e.EntityType == EntityType.House
                 );
 
+            var builders = playerView.Entities
+                .Where(e =>
+                    e.PlayerId == MyId &&
+                    e.EntityType == EntityType.BuilderUnit
+                )
+                .OrderBy(e => Distance(e.Position, MyBase));
 
-            //Entity? builderUnit = null;
-            //int minDistance = int.MaxValue;
-            foreach (Entity entity in playerView.Entities)
+            foreach (Entity builder in builders)
             {
-                if (entity.PlayerId != MyId || 
-                    entity.EntityType != EntityType.BuilderUnit)
-                {
-                    continue;
-                }
-
-                //int distance = Distance(entity.Position, MyBase);
-                //if (distance < minDistance)
-                //{
-                //    // todo unit unable to build
-                //    builderUnit = entity;
-                //    minDistance = distance;
-                //}
-
                 var myPlayer = playerView.Players[MyId - 1];
                 //var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
                 var buildEntityType = EntityType.House;
@@ -71,13 +61,13 @@ namespace Aicup2020
 
                 if (myPlayer.Resource >= buildEntity.InitialCost)
                 {
-                    var position = new Vec2Int(entity.Position.X + 1, entity.Position.Y);
+                    var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
+                    var buildingNeighbors = Neighbors(buildPosition, buildEntity.Size);
 
-                    // todo проверка buildEntity.Size + 1 чтобы здания вплотную друг к другу не строить только низ проверяет, а надо другие стороны не учитывая юнитов.
-                    if (Passable(position) && PassableLeft(position, buildEntity.Size + 1))
+                    if (Passable(buildPosition) && PassableLeft(buildPosition, buildEntity.Size) && buildingNeighbors.All(PassableInFuture))
                     {
-                        var buildAction = new BuildAction(buildEntityType, position);
-                        entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
+                        var buildAction = new BuildAction(buildEntityType, buildPosition);
+                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
                         break;
                     }
                 }
@@ -530,6 +520,16 @@ namespace Aicup2020
         public static bool Passable(Vec2Int p)
         {
             return ScoreMap[p.X, p.Y].Entity == null;
+        }
+
+        public static bool PassableInFuture(Vec2Int p)
+        {
+            var entity = ScoreMap[p.X, p.Y].Entity;
+
+            return entity == null ||
+                   entity.Value.EntityType == EntityType.BuilderUnit ||
+                   entity.Value.EntityType == EntityType.MeleeUnit ||
+                   entity.Value.EntityType == EntityType.RangedUnit;
         }
 
         public static bool PassableLeft(Vec2Int p, int size)
