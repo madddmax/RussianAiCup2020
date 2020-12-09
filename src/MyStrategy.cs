@@ -7,7 +7,7 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public const int MaxBuildersCount = 50;
+        public const int MaxBuildersCount = 100;
 
         public class ScoreCell
         {
@@ -50,21 +50,26 @@ namespace Aicup2020
                      e.EntityType == EntityType.RangedUnit)
                 );
 
+
+            var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
             var builders = playerView.Entities
                 .Where(e =>
                     e.PlayerId == MyId &&
                     e.EntityType == EntityType.BuilderUnit
                 )
-                .OrderBy(e => e.Position.Distance(MyBase))
+                
                 .ToList();
+
+            builders = buildEntityType == EntityType.House
+                ? builders.OrderBy(e => e.Position.Distance(MyBase)).ToList()
+                : builders.OrderByDescending(e => e.Position.Distance(MyBase)).ToList();
 
             foreach (Entity builder in builders)
             {
-                //var buildEntityType = turrets > houses && houses < 15 ? EntityType.House : EntityType.Turret;
-                var buildEntityType = EntityType.House;
+                //var buildEntityType = EntityType.House;
                 var buildEntity = playerView.EntityProperties[buildEntityType];
 
-                if (MyResource >= buildEntity.InitialCost && limit >= availableLimit - 15)
+                if (MyResource >= buildEntity.InitialCost)
                 {
                     var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
                     var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
@@ -152,7 +157,12 @@ namespace Aicup2020
                             EntityType.MeleeUnit,
                             EntityType.RangedUnit,
                             EntityType.BuilderUnit,
-                            EntityType.Turret
+                            EntityType.Turret,
+                            EntityType.House,
+                            EntityType.BuilderBase,
+                            EntityType.MeleeBase,
+                            EntityType.RangedBase,
+                            EntityType.Wall
                         };
                         var attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
                         entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
