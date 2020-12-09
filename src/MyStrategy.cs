@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Aicup2020.Model;
 using Action = Aicup2020.Model.Action;
@@ -8,6 +7,8 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
+        public const int MaxBuildersCount = 50;
+
         public class ScoreCell
         {
             public Entity? Entity;
@@ -15,9 +16,7 @@ namespace Aicup2020
             // other scores
         }
 
-        private static readonly ScoreCell[,] ScoreMap = new ScoreCell[80, 80];
-
-        private static readonly Entity?[,] Map = new Entity?[80, 80];
+        public static readonly ScoreCell[,] ScoreMap = new ScoreCell[80, 80];
 
         private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
@@ -27,7 +26,6 @@ namespace Aicup2020
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
-            InitMap(playerView);
             InitScoreMap(playerView);
             MyId = playerView.MyId;
             MyResource = playerView.Players[MyId - 1].Resource;
@@ -57,7 +55,7 @@ namespace Aicup2020
                     e.PlayerId == MyId &&
                     e.EntityType == EntityType.BuilderUnit
                 )
-                .OrderBy(e => Distance(e.Position, MyBase))
+                .OrderBy(e => e.Position.Distance(MyBase))
                 .ToList();
 
             foreach (Entity builder in builders)
@@ -66,10 +64,10 @@ namespace Aicup2020
                 var buildEntityType = EntityType.House;
                 var buildEntity = playerView.EntityProperties[buildEntityType];
 
-                if (MyResource >= buildEntity.InitialCost && limit >= availableLimit - 10)
+                if (MyResource >= buildEntity.InitialCost && limit >= availableLimit - 15)
                 {
                     var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
-                    var buildingNeighbors = Neighbors(buildPosition, buildEntity.Size);
+                    var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
 
                     if (Passable(buildPosition) && PassableLeft(buildPosition, buildEntity.Size) && buildingNeighbors.All(PassableInFuture))
                     {
@@ -106,9 +104,9 @@ namespace Aicup2020
                         BuildAction? buildAction = null;
 
                         var builderProperties = playerView.EntityProperties[EntityType.BuilderUnit];
-                        if (MyResource >= builderProperties.InitialCost + builders.Count)
+                        if (MyResource >= builderProperties.InitialCost + builders.Count && builders.Count <= MaxBuildersCount)
                         {
-                            var neighbors = Neighbors(entity.Position, properties.Size);
+                            var neighbors = entity.Position.Neighbors(properties.Size);
                             foreach (var position in neighbors)
                             {
                                 if (Passable(position))
@@ -165,34 +163,104 @@ namespace Aicup2020
             return new Action(entityActions);
         }
 
-        private static void InitMap(PlayerView playerView)
+        private static bool ResourceEval(int x, int y)
         {
-            for (int y = 0; y < 80; y++)
+            Entity? entity = ScoreMap[x, y].Entity;
+            return entity == null ||
+                   entity.Value.EntityType == EntityType.BuilderUnit ||
+                   entity.Value.EntityType == EntityType.MeleeUnit ||
+                   entity.Value.EntityType == EntityType.RangedUnit;
+        }
+
+        private static void SetBuilderRepairAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
             {
-                for (int x = 0; x < 80; x++)
+                return;
+            }
+
+            var neighbors = entity.Position.Neighbors();
+            foreach (var target in neighbors)
+            {
+                var targetEntity = ScoreMap[target.X, target.Y].Entity;
+                if (targetEntity?.Active == false)
                 {
-                    Map[x, y] = null;
+                    var repairAction = new RepairAction(targetEntity.Value.Id);
+                    entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
+                    break;
+                }
+            }
+        }
+
+        private static void SetBuilderAttackAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
+            var neighbors = entity.Position.Neighbors();
+            foreach (var target in neighbors)
+            {
+                var targetEntity = ScoreMap[target.X, target.Y].Entity;
+                if (targetEntity?.EntityType == EntityType.Resource)
+                {
+                    var attackAction = new AttackAction(targetEntity.Value.Id, null);
+                    entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
+                    break;
+                }
+            }
+        }
+
+        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
+            // AStarSearch
+            Vec2Int? moveTarget = null;
+
+            var frontier = new PriorityQueue<Vec2Int>();
+            frontier.Enqueue(entity.Position, 0);
+
+            //var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
+            var costSoFar = new Dictionary<Vec2Int, int>();
+
+            //cameFrom[entity.Position] = entity.Position;
+            costSoFar[entity.Position] = 0;
+
+            while (frontier.Count > 0)
+            {
+                var current = frontier.Dequeue();
+
+                if (ScoreMap[current.X, current.Y].ResourceScore > 0)
+                {
+                    moveTarget = current;
+                    break;
+                }
+
+                foreach (Vec2Int next in current.Neighbors())
+                {
+                    int newCost = costSoFar[current] + 1;
+                    if (Passable(next) && (!costSoFar.ContainsKey(next) || newCost < costSoFar[next]))
+                    {
+                        costSoFar[next] = newCost;
+                        frontier.Enqueue(next, newCost);
+                        //cameFrom[next] = current;
+                    }
                 }
             }
 
-            foreach (Entity entity in playerView.Entities)
-            {
-                var properties = playerView.EntityProperties[entity.EntityType];
-                if (properties.Size > 1)
-                {
-                    for (int y = entity.Position.Y; y < entity.Position.Y + properties.Size; y++)
-                    {
-                        for (int x = entity.Position.X; x < entity.Position.X + properties.Size; x++)
-                        {
-                            Map[x, y] = entity;
-                        }
-                    }
-                }
-                else
-                {
-                    Map[entity.Position.X, entity.Position.Y] = entity;
-                }
-            }
+            //if (moveTarget != null)
+            //{
+            //    Map[entity.Position.X, entity.Position.Y] = null;
+            //    Map[moveTarget.X, moveTarget.Y] = entity;
+            //}
+
+            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
+            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
         private static void InitScoreMap(PlayerView playerView)
@@ -272,268 +340,6 @@ namespace Aicup2020
             }
         }
 
-        private static bool ResourceEval(int x, int y)
-        {
-            Entity? entity = ScoreMap[x, y].Entity;
-            return entity == null ||
-                   entity.Value.EntityType == EntityType.BuilderUnit ||
-                   entity.Value.EntityType == EntityType.MeleeUnit ||
-                   entity.Value.EntityType == EntityType.RangedUnit;
-        }
-
-        private static void SetBuilderRepairAction(Entity entity, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            RepairAction? repairAction = null;
-
-            var leftEntity = entity.Position.X + 1 < 80
-                ? Map[entity.Position.X + 1, entity.Position.Y]
-                : null;
-
-            var upEntity = entity.Position.Y - 1 >= 0
-                ? Map[entity.Position.X, entity.Position.Y - 1]
-                : null;
-
-            var rightEntity = entity.Position.X - 1 >= 0
-                ? Map[entity.Position.X - 1, entity.Position.Y]
-                : null;
-
-            var downEntity = entity.Position.Y + 1 < 80
-                ? Map[entity.Position.X, entity.Position.Y + 1]
-                : null;
-
-            if (leftEntity != null && !leftEntity.Value.Active)
-            {
-                repairAction = new RepairAction(leftEntity.Value.Id);
-            }
-            else if (upEntity != null && !upEntity.Value.Active)
-            {
-                repairAction = new RepairAction(upEntity.Value.Id);
-            }
-            else if (rightEntity != null && !rightEntity.Value.Active)
-            {
-                repairAction = new RepairAction(rightEntity.Value.Id);
-            }
-            else if (downEntity != null && !downEntity.Value.Active)
-            {
-                repairAction = new RepairAction(downEntity.Value.Id);
-            }
-
-            if (repairAction != null)
-            {
-                entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
-            }
-        }
-
-        private static void SetBuilderAttackAction(Entity entity, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            AttackAction? attackAction = null;
-
-            var leftEntity = entity.Position.X + 1 < 80
-                ? Map[entity.Position.X + 1, entity.Position.Y]
-                : null;
-
-            var upEntity = entity.Position.Y - 1 >= 0
-                ? Map[entity.Position.X, entity.Position.Y - 1]
-                : null;
-
-            var rightEntity = entity.Position.X - 1 >= 0
-                ? Map[entity.Position.X - 1, entity.Position.Y]
-                : null;
-
-            var downEntity = entity.Position.Y + 1 < 80
-                ? Map[entity.Position.X, entity.Position.Y + 1]
-                : null;
-
-            var leftEval = leftEntity != null && leftEntity.Value.EntityType == EntityType.Resource
-                ? 30 / leftEntity.Value.Health
-                : int.MinValue;
-
-            var upEval = upEntity != null && upEntity.Value.EntityType == EntityType.Resource
-                ? 30 / upEntity.Value.Health
-                : int.MinValue;
-
-            var rightEval = rightEntity != null && rightEntity.Value.EntityType == EntityType.Resource
-                ? 30 / rightEntity.Value.Health
-                : int.MinValue;
-
-            var downEval = downEntity != null && downEntity.Value.EntityType == EntityType.Resource
-                ? 30 / downEntity.Value.Health
-                : int.MinValue;
-
-            if (leftEntity != null &&
-                leftEval != int.MinValue &&
-                leftEval >= upEval &&
-                leftEval >= rightEval &&
-                leftEval >= downEval)
-            {
-                attackAction = new AttackAction(leftEntity.Value.Id, null);
-            }
-            else if (upEntity != null &&
-                     upEval != int.MinValue &&
-                     upEval >= leftEval &&
-                     upEval >= rightEval &&
-                     upEval >= downEval)
-            {
-                attackAction = new AttackAction(upEntity.Value.Id, null);
-            }
-            else if (rightEntity != null &&
-                     rightEval != int.MinValue &&
-                     rightEval >= upEval &&
-                     rightEval >= leftEval &&
-                     rightEval >= downEval)
-            {
-                attackAction = new AttackAction(rightEntity.Value.Id, null);
-            }
-            else if (downEntity != null &&
-                     downEval != int.MinValue &&
-                     downEval >= upEval &&
-                     downEval >= rightEval &&
-                     downEval >= leftEval)
-            {
-                attackAction = new AttackAction(downEntity.Value.Id, null);
-            }
-
-            if (attackAction != null)
-            {
-                entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
-            }
-        }
-
-        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            // AStarSearch
-            Vec2Int? moveTarget = null;
-
-            var frontier = new PriorityQueue<Vec2Int>();
-            frontier.Enqueue(entity.Position, 0);
-
-            //var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
-            var costSoFar = new Dictionary<Vec2Int, int>();
-
-            //cameFrom[entity.Position] = entity.Position;
-            costSoFar[entity.Position] = 0;
-
-            while (frontier.Count > 0)
-            {
-                var current = frontier.Dequeue();
-
-                if (ScoreMap[current.X, current.Y].ResourceScore > 0)
-                {
-                    moveTarget = current;
-                    break;
-                }
-
-                foreach (Vec2Int next in Neighbors(current))
-                {
-                    int newCost = costSoFar[current] + 1;
-                    if (Passable(next) && (!costSoFar.ContainsKey(next) || newCost < costSoFar[next]))
-                    {
-                        costSoFar[next] = newCost;
-                        frontier.Enqueue(next, newCost);
-                        //cameFrom[next] = current;
-                    }
-                }
-            }
-
-            //if (moveTarget != null)
-            //{
-            //    Map[entity.Position.X, entity.Position.Y] = null;
-            //    Map[moveTarget.X, moveTarget.Y] = entity;
-            //}
-
-            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
-            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
-        }
-
-        public static List<Vec2Int> Neighbors(Vec2Int p)
-        {
-            var neighbors = new List<Vec2Int>();
-
-            // left
-            if (p.X + 1 < 80)
-            {
-                neighbors.Add(new Vec2Int(p.X + 1, p.Y));
-            }
-
-            // up
-            if (p.Y - 1 >= 0)
-            {
-                neighbors.Add(new Vec2Int(p.X, p.Y - 1));
-            }
-
-            // right
-            if (p.X - 1 >= 0)
-            {
-                neighbors.Add(new Vec2Int(p.X - 1, p.Y));
-            }
-
-            // down
-            if (p.Y + 1 < 80)
-            {
-                neighbors.Add(new Vec2Int(p.X, p.Y + 1));
-            }
-
-            return neighbors;
-        }
-
-        public static List<Vec2Int> Neighbors(Vec2Int p, int size)
-        {
-            var neighbors = new List<Vec2Int>();
-
-            // left
-            if (p.X + size < 80)
-            {
-                for (int i = 0; i < size; i++)
-                {
-                    neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
-                }
-            }
-
-            // up
-            if (p.Y - 1 >= 0)
-            {
-                for (int i = 0; i < size; i++)
-                {
-                    neighbors.Add(new Vec2Int(p.X + i, p.Y - 1));
-                }
-            }
-
-            // right
-            if (p.X - 1 >= 0)
-            {
-                for (int i = 0; i < size; i++)
-                {
-                    neighbors.Add(new Vec2Int(p.X - 1, p.Y + i));
-                }
-            }
-
-            // down
-            if (p.Y + size < 80)
-            {
-                for (int i = 0; i < size; i++)
-                {
-                    neighbors.Add(new Vec2Int(p.X + i, p.Y + size));
-                }
-            }
-
-            return neighbors;
-        }
-
         public static bool Passable(Vec2Int p)
         {
             return ScoreMap[p.X, p.Y].Entity == null;
@@ -585,10 +391,6 @@ namespace Aicup2020
                 }
             }
         }
-
-        public static int Distance(Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
-
-        public static int Distance(Vec2Int p1, int x, int y) => Math.Abs(p1.X - x) + Math.Abs(p1.Y - y);
 
         public void DebugUpdate(PlayerView playerView, DebugInterface debugInterface) 
         {
