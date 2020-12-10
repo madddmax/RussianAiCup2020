@@ -1,6 +1,6 @@
 ﻿using Aicup2020.Model;
 
-namespace Aicup2020
+namespace Aicup2020.MyModel
 {
     public class ScoreCell
     {

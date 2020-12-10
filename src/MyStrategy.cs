@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Aicup2020.Model;
-using Action = Aicup2020.Model.Action;
+using Aicup2020.MyModel;
 
 namespace Aicup2020
 {

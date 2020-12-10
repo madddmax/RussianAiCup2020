@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Aicup2020
+namespace Aicup2020.MyModel
 {
     public class PriorityQueue<T>
     {

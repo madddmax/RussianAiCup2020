@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Aicup2020.Model;
 
-namespace Aicup2020
+namespace Aicup2020.MyModel
 {
     public static class Vec2IntExtensions
     {
