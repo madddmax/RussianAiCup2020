@@ -51,34 +51,41 @@ namespace Aicup2020.MyModel
                     }
 
                     Entity entity = Map[x, y].Entity.Value;
+                    EntityProperties entityProperties = playerView.EntityProperties[entity.EntityType];
+
                     if (entity.EntityType == EntityType.Resource)
                     {
-                        int leftX = entity.Position.X + 1;
-                        int leftY = entity.Position.Y;
-                        if (leftX < 80 && PassableInFuture(leftX, leftY))
+                        var neighbors = entity.Position.Neighbors();
+                        foreach (var target in neighbors)
                         {
-                            Map[leftX, leftY].ResourceScore = 1;
+                            if (PassableInFuture(target))
+                            {
+                                Map[target.X, target.Y].ResourceScore = 1;
+                            }
                         }
+                    }
 
-                        int upX = entity.Position.X;
-                        int upY = entity.Position.Y - 1;
-                        if (upY >= 0 && PassableInFuture(upX, upY))
+                    if (!entity.Active)
+                    {
+                        var neighbors = entity.Position.Neighbors(entityProperties.Size);
+                        foreach (var target in neighbors)
                         {
-                            Map[upX, upY].ResourceScore = 1;
+                            if (PassableInFuture(target))
+                            {
+                                Map[target.X, target.Y].BuildScore = 1;
+                            }
                         }
+                    }
 
-                        int rightX = entity.Position.X - 1;
-                        int rightY = entity.Position.Y;
-                        if (rightX >= 0 && PassableInFuture(rightX, rightY))
+                    if (entity.EntityType == EntityType.Turret && entity.Health < entityProperties.MaxHealth)
+                    {
+                        var neighbors = entity.Position.Neighbors(entityProperties.Size);
+                        foreach (var target in neighbors)
                         {
-                            Map[rightX, rightY].ResourceScore = 1;
-                        }
-
-                        int downX = entity.Position.X;
-                        int downY = entity.Position.Y + 1;
-                        if (downY < 80 && PassableInFuture(downX, downY))
-                        {
-                            Map[downX, downY].ResourceScore = 1;
+                            if (PassableInFuture(target))
+                            {
+                                Map[target.X, target.Y].RepairScore = 2;
+                            }
                         }
                     }
                 }

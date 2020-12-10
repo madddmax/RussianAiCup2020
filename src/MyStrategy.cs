@@ -7,7 +7,7 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public const int MaxBuildersCount = 100;
+        public const int MaxBuildersCount = 200;
 
         private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
@@ -64,10 +64,9 @@ namespace Aicup2020
 
             foreach (Entity builder in builders)
             {
-                //var buildEntityType = EntityType.House;
                 var buildEntity = playerView.EntityProperties[buildEntityType];
 
-                if (MyResource >= buildEntity.InitialCost)
+                if (MyResource >= buildEntity.InitialCost && builder.Position.X + 1 < 80)
                 {
                     var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
                     var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
@@ -236,7 +235,9 @@ namespace Aicup2020
             {
                 var current = frontier.Dequeue();
 
-                if (ScoreMap.Get(current).ResourceScore > 0)
+                if (ScoreMap.Get(current).ResourceScore > 0 ||
+                    ScoreMap.Get(current).BuildScore > 0 ||
+                    ScoreMap.Get(current).RepairScore > 0)
                 {
                     moveTarget = current;
                     break;
