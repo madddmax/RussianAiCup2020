@@ -15,6 +15,8 @@ namespace Aicup2020
 
         public static int MyResource;
 
+        public static Entity? DistantResource;
+
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
             ScoreMap.InitMap(playerView);
@@ -41,8 +43,13 @@ namespace Aicup2020
                      e.EntityType == EntityType.RangedUnit)
                 );
 
+            DistantResource = playerView.Entities
+                .Where(e => e.EntityType == EntityType.Resource)
+                .OrderByDescending(e => e.Position.Distance(MyBase))
+                .FirstOrDefault();
 
-            var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
+            //var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
+            var buildEntityType = EntityType.House;
             var builders = playerView.Entities
                 .Where(e =>
                     e.PlayerId == MyId &&
@@ -204,6 +211,8 @@ namespace Aicup2020
             }
         }
 
+        public const int MaxSearchStep = 200;
+
         private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
@@ -223,7 +232,7 @@ namespace Aicup2020
             //cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
 
-            while (frontier.Count > 0)
+            for (int i = 0; i < MaxSearchStep && frontier.Count > 0; i++)
             {
                 var current = frontier.Dequeue();
 
@@ -243,6 +252,11 @@ namespace Aicup2020
                         //cameFrom[next] = current;
                     }
                 }
+            }
+
+            if (moveTarget == null && DistantResource != null)
+            {
+                moveTarget = DistantResource.Value.Position;
             }
 
             //if (moveTarget != null)
