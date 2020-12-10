@@ -7,7 +7,7 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public const int MaxBuildersCount = 200;
+        public const int MaxBuildersCount = 100;
 
         private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
@@ -16,6 +16,8 @@ namespace Aicup2020
         public static int MyResource;
 
         public static Entity? DistantResource;
+
+        public static Entity? NearestEnemy;
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
@@ -43,45 +45,79 @@ namespace Aicup2020
                      e.EntityType == EntityType.RangedUnit)
                 );
 
-            DistantResource = playerView.Entities
-                .Where(e => e.EntityType == EntityType.Resource)
-                .OrderByDescending(e => e.Position.Distance(MyBase))
-                .FirstOrDefault();
+            int buildedHouse = playerView.Entities
+                .Count(e =>
+                    e.PlayerId == MyId &&
+                    !e.Active &&
+                    e.EntityType == EntityType.House
+                );
 
-            //var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
-            var buildEntityType = EntityType.House;
             var builders = playerView.Entities
                 .Where(e =>
                     e.PlayerId == MyId &&
                     e.EntityType == EntityType.BuilderUnit
                 )
-                
                 .ToList();
 
-            builders = buildEntityType == EntityType.House
-                ? builders.OrderBy(e => e.Position.Distance(MyBase)).ToList()
-                : builders.OrderByDescending(e => e.Position.Distance(MyBase)).ToList();
+            DistantResource = playerView.Entities
+                .Where(e => e.EntityType == EntityType.Resource)
+                .OrderByDescending(e => e.Position.Distance(MyBase))
+                .FirstOrDefault();
 
-            foreach (Entity builder in builders)
+            NearestEnemy = playerView.Entities
+                .Where(e =>
+                    e.PlayerId != MyId &&
+                    e.EntityType != EntityType.Resource
+                )
+                .OrderBy(e => e.Position.Distance(MyBase))
+                .FirstOrDefault();
+
+            //var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
+            EntityType? buildEntityType = null;
+            if (NearestEnemy != null && NearestEnemy.Value.Position.Distance(MyBase) <= 40)
             {
-                var buildEntity = playerView.EntityProperties[buildEntityType];
+                buildEntityType = EntityType.Turret;
+            }
 
-                if (MyResource >= buildEntity.InitialCost && builder.Position.X + 1 < 80)
+            if (buildEntityType == null && limit + 10 > availableLimit && buildedHouse < 2)
+            {
+                buildEntityType = EntityType.House;
+            }
+
+            if (buildEntityType != null && buildEntityType == EntityType.Turret)
+            {
+                builders = builders.OrderBy(e => e.Position.Distance(NearestEnemy.Value.Position)).ToList();
+            }
+
+            if (buildEntityType != null && buildEntityType == EntityType.House)
+            {
+                builders = builders.OrderBy(e => e.Position.Distance(MyBase)).ToList();
+            }
+
+            if (buildEntityType != null)
+            {
+                foreach (Entity builder in builders)
                 {
-                    var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
-                    var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
+                    var buildEntity = playerView.EntityProperties[buildEntityType.Value];
 
-                    if (ScoreMap.Passable(buildPosition) && ScoreMap.PassableLeft(buildPosition, buildEntity.Size) && buildingNeighbors.All(ScoreMap.PassableInFuture))
+                    if (MyResource >= buildEntity.InitialCost && builder.Position.X + 1 < 80)
                     {
-                        var buildAction = new BuildAction(buildEntityType, buildPosition);
-                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
+                        var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
+                        var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
 
-                        ScoreMap.BuildLeft(buildPosition, buildEntity.Size);
-                        MyResource -= buildEntity.InitialCost;
-                        break;
+                        if (ScoreMap.Passable(buildPosition) && ScoreMap.PassableLeft(buildPosition, buildEntity.Size) && buildingNeighbors.All(ScoreMap.PassableInFuture))
+                        {
+                            var buildAction = new BuildAction(buildEntityType.Value, buildPosition);
+                            entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
+
+                            ScoreMap.BuildLeft(buildPosition, buildEntity.Size);
+                            MyResource -= buildEntity.InitialCost;
+                            break;
+                        }
                     }
                 }
             }
+
 
 
             foreach (Entity entity in playerView.Entities)
@@ -127,7 +163,7 @@ namespace Aicup2020
 
                     case EntityType.BuilderUnit:
                     {
-                        SetBuilderRepairAction(entity, entityActions);
+                        SetBuilderRepairAction(playerView, entity, entityActions);
                         SetBuilderAttackAction(entity, entityActions);
                         SetMoveAction(entity, entityActions);
                         continue;
@@ -170,7 +206,7 @@ namespace Aicup2020
             return new Action(entityActions);
         }
 
-        private static void SetBuilderRepairAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        private static void SetBuilderRepairAction(PlayerView playerView, Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
@@ -181,7 +217,14 @@ namespace Aicup2020
             foreach (var target in neighbors)
             {
                 var targetEntity = ScoreMap.Get(target).Entity;
-                if (targetEntity?.Active == false)
+                if (targetEntity == null)
+                {
+                    continue;
+                }
+
+                var entityProperties = playerView.EntityProperties[targetEntity.Value.EntityType];
+                if (targetEntity.Value.PlayerId == MyId && 
+                    targetEntity.Value.Health < entityProperties.MaxHealth)
                 {
                     var repairAction = new RepairAction(targetEntity.Value.Id);
                     entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
