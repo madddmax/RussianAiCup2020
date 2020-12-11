@@ -65,26 +65,28 @@ namespace Aicup2020.MyModel
                         }
                     }
 
-                    if (!entity.Active)
+                    if (entity.PlayerId == MyStrategy.MyId && 
+                        entity.Health < entityProperties.MaxHealth)
                     {
                         var neighbors = entity.Position.Neighbors(entityProperties.Size);
                         foreach (var target in neighbors)
                         {
                             if (PassableInFuture(target))
                             {
-                                Map[target.X, target.Y].BuildScore = 1;
+                                Map[target.X, target.Y].RepairScore = 1;
                             }
                         }
                     }
 
-                    if (entity.EntityType == EntityType.Turret && entity.Health < entityProperties.MaxHealth)
+                    if (entity.PlayerId != MyStrategy.MyId &&
+                        entity.EntityType != EntityType.Resource)
                     {
                         var neighbors = entity.Position.Neighbors(entityProperties.Size);
                         foreach (var target in neighbors)
                         {
                             if (PassableInFuture(target))
                             {
-                                Map[target.X, target.Y].RepairScore = 2;
+                                Map[target.X, target.Y].AttackScore = 1;
                             }
                         }
                     }

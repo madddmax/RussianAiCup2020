@@ -9,6 +9,14 @@ namespace Aicup2020
     {
         public const int MaxBuildersCount = 100;
 
+        public const int MaxKnightsCount = 20;
+
+        public const int MaxRangersCount = 100;
+
+        public const int DangerDistance = 30;
+
+        public const int MaxSearchMove = 200;
+
         private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
         public static int MyId;
@@ -17,7 +25,24 @@ namespace Aicup2020
 
         public static Entity? DistantResource;
 
+        public static Entity? DistantBuilder;
+
         public static Entity? NearestEnemy;
+
+        public static bool IsDanger;
+
+        public static readonly EntityType[] UnitTargets =
+        {
+            EntityType.MeleeUnit,
+            EntityType.RangedUnit,
+            EntityType.BuilderUnit,
+            EntityType.Turret,
+            EntityType.House,
+            EntityType.BuilderBase,
+            EntityType.MeleeBase,
+            EntityType.RangedBase,
+            EntityType.Wall
+        };
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
@@ -52,10 +77,31 @@ namespace Aicup2020
                     e.EntityType == EntityType.House
                 );
 
+            int buildedTurret = playerView.Entities
+                .Count(e =>
+                    e.PlayerId == MyId &&
+                    !e.Active &&
+                    e.EntityType == EntityType.Turret
+                );
+
             var builders = playerView.Entities
                 .Where(e =>
                     e.PlayerId == MyId &&
                     e.EntityType == EntityType.BuilderUnit
+                )
+                .ToList();
+
+            var knights = playerView.Entities
+                .Where(e =>
+                    e.PlayerId == MyId &&
+                    e.EntityType == EntityType.MeleeUnit
+                )
+                .ToList();
+
+            var rangers = playerView.Entities
+                .Where(e =>
+                    e.PlayerId == MyId &&
+                    e.EntityType == EntityType.RangedUnit
                 )
                 .ToList();
 
@@ -64,30 +110,41 @@ namespace Aicup2020
                 .OrderByDescending(e => e.Position.Distance(MyBase))
                 .FirstOrDefault();
 
+            DistantBuilder = playerView.Entities
+                .Where(e =>
+                    e.PlayerId == MyId &&
+                    e.EntityType == EntityType.BuilderUnit
+                )
+                .OrderByDescending(e => e.Position.Distance(MyBase))
+                .FirstOrDefault();
+
+            var comparedPosition = DistantBuilder?.Position ?? MyBase;
             NearestEnemy = playerView.Entities
                 .Where(e =>
                     e.PlayerId != MyId &&
                     e.EntityType != EntityType.Resource
                 )
-                .OrderBy(e => e.Position.Distance(MyBase))
+                .OrderBy(e => e.Position.Distance(comparedPosition))
                 .FirstOrDefault();
+
+            IsDanger = NearestEnemy.Value.Position.Distance(comparedPosition) <= DangerDistance;
 
             //var buildEntityType = limit < 50 ? EntityType.House : EntityType.Turret;
             EntityType? buildEntityType = null;
-            if (NearestEnemy != null && NearestEnemy.Value.Position.Distance(MyBase) <= 40)
-            {
-                buildEntityType = EntityType.Turret;
-            }
+            //if (NearestEnemy != null && IsDanger)
+            //{
+            //    buildEntityType = EntityType.Turret;
+            //}
 
-            if (buildEntityType == null && limit + 10 > availableLimit && buildedHouse < 2)
+            if (limit + 10 > availableLimit && buildedHouse < 2)
             {
                 buildEntityType = EntityType.House;
             }
 
-            if (buildEntityType != null && buildEntityType == EntityType.Turret)
-            {
-                builders = builders.OrderBy(e => e.Position.Distance(NearestEnemy.Value.Position)).ToList();
-            }
+            //if (buildEntityType != null && buildEntityType == EntityType.Turret && buildedTurret == 0)
+            //{
+            //    builders = builders.OrderBy(e => e.Position.Distance(NearestEnemy.Value.Position)).ToList();
+            //}
 
             if (buildEntityType != null && buildEntityType == EntityType.House)
             {
@@ -119,7 +176,6 @@ namespace Aicup2020
             }
 
 
-
             foreach (Entity entity in playerView.Entities)
             {
                 if (entity.PlayerId != MyId)
@@ -138,72 +194,115 @@ namespace Aicup2020
                         continue;
 
                     case EntityType.BuilderBase:
-                        
-                        BuildAction? buildAction = null;
+                    {
+                        var unitProperties = playerView.EntityProperties[EntityType.BuilderUnit];
+                        int unitCost = unitProperties.InitialCost + builders.Count;
 
-                        var builderProperties = playerView.EntityProperties[EntityType.BuilderUnit];
-                        if (MyResource >= builderProperties.InitialCost + builders.Count && builders.Count <= MaxBuildersCount)
+                        if ((IsDanger && MyResource >= unitCost * 3) ||
+                            (!IsDanger && MyResource >= unitCost) &&
+                            builders.Count <= MaxBuildersCount)
                         {
-                            var neighbors = entity.Position.Neighbors(properties.Size);
-                            foreach (var position in neighbors)
-                            {
-                                if (ScoreMap.Passable(position))
-                                {
-                                    buildAction = new BuildAction(EntityType.BuilderUnit, position);
-
-                                    ScoreMap.BuildLeft(position, 1);
-                                    MyResource -= builderProperties.InitialCost + builders.Count;
-                                    break;
-                                }
-                            }
+                            SetBuildUnitAction(entity, EntityType.BuilderUnit, unitCost, entityActions);
                         }
 
-                        entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
-                        continue;
+                        if (!entityActions.ContainsKey(entity.Id))
+                        {
+                            entityActions.Add(entity.Id, new EntityAction(null, null, null, null));
+                        }
 
+                        continue;
+                    }
                     case EntityType.BuilderUnit:
                     {
                         SetBuilderRepairAction(playerView, entity, entityActions);
                         SetBuilderAttackAction(entity, entityActions);
-                        SetMoveAction(entity, entityActions);
+
+                        var target = DistantResource?.Position;
+                        SetMoveAction(entity, target, entityActions, false);
                         continue;
                     }
 
                     case EntityType.MeleeBase:
+                    {
+                        var unitProperties = playerView.EntityProperties[EntityType.MeleeUnit];
+                        int unitCost = unitProperties.InitialCost + knights.Count;
+
+                        if (IsDanger && MyResource >= unitCost &&
+                            knights.Count <= MaxKnightsCount)
+                        {
+                            SetBuildUnitAction(entity, EntityType.MeleeUnit, unitCost, entityActions);
+                        }
+
+                        if (!entityActions.ContainsKey(entity.Id))
+                        {
+                            entityActions.Add(entity.Id, new EntityAction(null, null, null, null));
+                        }
+
                         continue;
+                    }
 
                     case EntityType.MeleeUnit:
+                    {
+                        var target = NearestEnemy?.Position;
+                        SetMoveAction(entity, target, entityActions, true);
                         continue;
+                    }
 
                     case EntityType.RangedBase:
+                    {
+                        var unitProperties = playerView.EntityProperties[EntityType.RangedUnit];
+                        int unitCost = unitProperties.InitialCost + rangers.Count;
+
+                        if (IsDanger && MyResource >= unitCost &&
+                            rangers.Count <= MaxRangersCount)
+                        {
+                            SetBuildUnitAction(entity, EntityType.RangedUnit, unitCost, entityActions);
+                        }
+
+                        if (!entityActions.ContainsKey(entity.Id))
+                        {
+                            entityActions.Add(entity.Id, new EntityAction(null, null, null, null));
+                        }
+
                         continue;
+                    }
 
                     case EntityType.RangedUnit:
+                    {
+                        var target = NearestEnemy?.Position;
+                        SetMoveAction(entity, target, entityActions, true);
                         continue;
-
+                    }
                     case EntityType.Resource:
                         continue;
 
                     case EntityType.Turret:
-                        EntityType[] unitTargets =
-                        {
-                            EntityType.MeleeUnit,
-                            EntityType.RangedUnit,
-                            EntityType.BuilderUnit,
-                            EntityType.Turret,
-                            EntityType.House,
-                            EntityType.BuilderBase,
-                            EntityType.MeleeBase,
-                            EntityType.RangedBase,
-                            EntityType.Wall
-                        };
-                        var attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, unitTargets));
+                    {
+                        var attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, UnitTargets));
                         entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
                         continue;
+                    }
                 }
             }
 
             return new Action(entityActions);
+        }
+
+        private static void SetBuildUnitAction(Entity entity, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
+        {
+            var neighbors = entity.Position.Neighbors(5);
+            foreach (var position in neighbors)
+            {
+                if (ScoreMap.Passable(position))
+                {
+                    var buildAction = new BuildAction(buildUnit, position);
+                    entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
+
+                    ScoreMap.BuildLeft(position, 1);
+                    MyResource -= unitCost;
+                    break;
+                }
+            }
         }
 
         private static void SetBuilderRepairAction(PlayerView playerView, Entity entity, Dictionary<int, EntityAction> entityActions)
@@ -253,9 +352,7 @@ namespace Aicup2020
             }
         }
 
-        public const int MaxSearchStep = 200;
-
-        private static void SetMoveAction(Entity entity, Dictionary<int, EntityAction> entityActions)
+        private static void SetMoveAction(Entity entity, Vec2Int? approxTarget, Dictionary<int, EntityAction> entityActions, bool addAutoAttack)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
@@ -274,13 +371,21 @@ namespace Aicup2020
             //cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
 
-            for (int i = 0; i < MaxSearchStep && frontier.Count > 0; i++)
+            for (int i = 0; i < MaxSearchMove && frontier.Count > 0; i++)
             {
                 var current = frontier.Dequeue();
 
-                if (ScoreMap.Get(current).ResourceScore > 0 ||
-                    ScoreMap.Get(current).BuildScore > 0 ||
-                    ScoreMap.Get(current).RepairScore > 0)
+                if (entity.EntityType == EntityType.BuilderUnit &&
+                    (ScoreMap.Get(current).ResourceScore > 0 ||
+                     ScoreMap.Get(current).RepairScore > 0))
+                {
+                    moveTarget = current;
+                    break;
+                }
+
+                if ((entity.EntityType == EntityType.MeleeUnit || 
+                    entity.EntityType == EntityType.RangedUnit) &&
+                    ScoreMap.Get(current).AttackScore > 0)
                 {
                     moveTarget = current;
                     break;
@@ -298,9 +403,9 @@ namespace Aicup2020
                 }
             }
 
-            if (moveTarget == null && DistantResource != null)
+            if (moveTarget == null && approxTarget != null)
             {
-                moveTarget = DistantResource.Value.Position;
+                moveTarget = approxTarget;
             }
 
             //if (moveTarget != null)
@@ -309,8 +414,14 @@ namespace Aicup2020
             //    Map[moveTarget.X, moveTarget.Y] = entity;
             //}
 
+            AttackAction? attackAction = null;
+            if (addAutoAttack)
+            {
+                attackAction = new AttackAction(null, new AutoAttack(10, UnitTargets));
+            }
+
             var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
-            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
+            entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
         }
 
         public void DebugUpdate(PlayerView playerView, DebugInterface debugInterface) 

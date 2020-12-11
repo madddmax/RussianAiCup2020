@@ -8,9 +8,9 @@ namespace Aicup2020.MyModel
 
         public int ResourceScore;
 
-        public int BuildScore;
-
         public int RepairScore;
+
+        public int AttackScore;
 
         public int ScoutScore;
 
