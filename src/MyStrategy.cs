@@ -11,7 +11,7 @@ namespace Aicup2020
 
         public const int MaxKnightsCount = 20;
 
-        public const int MaxRangersCount = 60;
+        public const int MaxRangersCount = 80;
 
         public const int DangerDistance = 10;
 
@@ -57,6 +57,13 @@ namespace Aicup2020
             MyResource = playerView.Players[MyId - 1].Resource;
 
             var entityActions = new Dictionary<int, EntityAction>();
+
+            int rangedBaseCount = playerView.Entities
+                .Count(e =>
+                    e.PlayerId == MyId &&
+                    e.Active &&
+                    e.EntityType == EntityType.RangedBase
+                );
 
             int availableLimit = playerView.Entities
                 .Count(e =>
@@ -158,20 +165,23 @@ namespace Aicup2020
                 }
             }
 
- 
             EntityType? buildEntityType = null;
-            if (limit + 10 > availableLimit && buildedHouse < 2)
+            if (rangedBaseCount == 0 && limit > 5)
+            {
+                buildEntityType = EntityType.RangedBase;
+            }
+
+            if (buildEntityType == null && 
+                limit + 10 > availableLimit && 
+                buildedHouse < 2)
             {
                 buildEntityType = EntityType.House;
             }
 
-            if (buildEntityType != null && buildEntityType == EntityType.House)
-            {
-                builders = builders.OrderBy(e => e.Position.Distance(MyBase)).ToList();
-            }
-
             if (buildEntityType != null)
             {
+                builders = builders.OrderBy(e => e.Position.Distance(MyBase)).ToList();
+
                 foreach (Entity builder in builders)
                 {
                     var buildEntity = playerView.EntityProperties[buildEntityType.Value];
