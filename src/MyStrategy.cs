@@ -7,13 +7,13 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public const int MaxBuildersCount = 90;
+        public const int MaxBuildersCount = 60;
 
-        public const int MaxKnightsCount = 30;
+        public const int MaxKnightsCount = 20;
 
-        public const int MaxRangersCount = 90;
+        public const int MaxRangersCount = 60;
 
-        public const int DangerDistance = 30;
+        public const int DangerDistance = 10;
 
         public const int MaxSearchMove = 200;
 
@@ -30,6 +30,8 @@ namespace Aicup2020
         public static List<Entity> DistantBuildings;
 
         public static List<Entity> DistantBuilders;
+
+        public static Entity? DistantBuilder;
 
         public static Entity? NearestEnemy;
 
@@ -131,6 +133,8 @@ namespace Aicup2020
                 .Take(5)
                 .ToList();
 
+            DistantBuilder = DistantBuilders.FirstOrDefault();
+
             Enemies = playerView.Entities
                 .Where(e =>
                     e.PlayerId != MyId &&
@@ -213,9 +217,9 @@ namespace Aicup2020
                         var unitProperties = playerView.EntityProperties[EntityType.BuilderUnit];
                         int unitCost = unitProperties.InitialCost + builders.Count;
 
-                        if ((IsDanger && MyResource >= unitCost * 3 ||
+                        if ((IsDanger && MyResource >= unitCost * 2 ||
                             !IsDanger && MyResource >= unitCost) &&
-                            builders.Count * 4 <= resources.Count &&
+                            builders.Count * 5 <= resources.Count &&
                             builders.Count <= MaxBuildersCount)
                         {
                             SetBuildUnitAction(entity, EntityType.BuilderUnit, unitCost, entityActions);
@@ -244,7 +248,7 @@ namespace Aicup2020
                         int unitCost = unitProperties.InitialCost + knights.Count;
 
                         if ((IsDanger && MyResource >= unitCost ||
-                             !IsDanger && MyResource >= unitCost * 3) &&
+                             !IsDanger && MyResource >= unitCost * 2) &&
                             rangers.Count * 2 >= MaxRangersCount &&
                             knights.Count <= MaxKnightsCount)
                         {
@@ -261,7 +265,11 @@ namespace Aicup2020
 
                     case EntityType.MeleeUnit:
                     {
-                        var target = NearestEnemy?.Position;
+
+                        var target = !IsDanger && builders.Count > 0 && knights.Count < 3 && rangers.Count < 6
+                            ? DistantBuilder?.Position
+                            : NearestEnemy?.Position;
+
                         SetMoveAction(entity, target, entityActions, true);
                         continue;
                     }
@@ -272,7 +280,7 @@ namespace Aicup2020
                         int unitCost = unitProperties.InitialCost + rangers.Count;
 
                         if ((IsDanger && MyResource >= unitCost ||
-                             !IsDanger && MyResource >= unitCost * 5) &&
+                             !IsDanger && MyResource >= unitCost * 3) &&
                             rangers.Count <= MaxRangersCount)
                         {
                             SetBuildUnitAction(entity, EntityType.RangedUnit, unitCost, entityActions);
@@ -288,7 +296,10 @@ namespace Aicup2020
 
                     case EntityType.RangedUnit:
                     {
-                        var target = NearestEnemy?.Position;
+                        var target = !IsDanger && builders.Count > 0 && knights.Count < 3 && rangers.Count < 6
+                            ? DistantBuilder?.Position
+                            : NearestEnemy?.Position;
+
                         SetMoveAction(entity, target, entityActions, true);
                         continue;
                     }
