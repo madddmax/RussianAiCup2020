@@ -22,42 +22,41 @@ namespace Aicup2020.MyModel
         };
 
         private static readonly ScoreCell[,] Map = new ScoreCell[80, 80];
-
         public static ScoreCell Get(Vec2Int p) => Map[p.X, p.Y];
 
         public static int MyId;
-
         public static int MyResource;
 
         public static List<Entity> Resources = new List<Entity>();
-
         public static List<Entity> Enemies = new List<Entity>();
 
         public static List<Entity> MyBuilderUnits = new List<Entity>();
-
         public static List<Entity> MyMeleeUnits = new List<Entity>();
-
         public static List<Entity> MyRangedUnits = new List<Entity>();
 
         public static List<Entity> MyActiveBuilderBases = new List<Entity>();
-
         public static List<Entity> MyNotActiveBuilderBases = new List<Entity>();
 
         public static List<Entity> MyActiveMeleeBases = new List<Entity>();
-
         public static List<Entity> MyNotActiveMeleeBases = new List<Entity>();
 
         public static List<Entity> MyActiveRangedBases = new List<Entity>();
-
         public static List<Entity> MyNotActiveRangedBases = new List<Entity>();
 
         public static List<Entity> MyActiveHouses = new List<Entity>();
-
         public static List<Entity> MyNotActiveHouses = new List<Entity>();
 
         public static int Limit;
-
         public static int AvailableLimit;
+
+        public static EntityProperties BuilderUnitProperties;
+        public static EntityProperties MeleeUnitProperties;
+        public static EntityProperties RangedUnitProperties;
+
+        public static EntityProperties BuilderBaseProperties;
+        public static EntityProperties MeleeBaseProperties;
+        public static EntityProperties RangedBaseProperties;
+        public static EntityProperties HouseProperties;
 
         public static void InitMap(PlayerView playerView)
         {
@@ -94,6 +93,15 @@ namespace Aicup2020.MyModel
 
             MyActiveHouses.Clear();
             MyNotActiveHouses.Clear();
+
+            BuilderUnitProperties = playerView.EntityProperties[EntityType.BuilderUnit];
+            MeleeUnitProperties = playerView.EntityProperties[EntityType.MeleeUnit];
+            RangedUnitProperties = playerView.EntityProperties[EntityType.RangedUnit];
+
+            BuilderBaseProperties = playerView.EntityProperties[EntityType.BuilderBase];
+            MeleeBaseProperties = playerView.EntityProperties[EntityType.MeleeBase];
+            RangedBaseProperties = playerView.EntityProperties[EntityType.RangedBase];
+            HouseProperties = playerView.EntityProperties[EntityType.House];
 
             foreach (Entity entity in playerView.Entities)
             {
@@ -224,7 +232,7 @@ namespace Aicup2020.MyModel
                         {
                             if (PassableInFuture(target))
                             {
-                                Map[target.X, target.Y].RepairScore = 1;
+                                Map[target.X, target.Y].RepairScore = entity.Active ? 1 : 2;
                             }
                         }
                     }

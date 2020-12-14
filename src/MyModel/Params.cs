@@ -6,7 +6,7 @@
 
         public const int MaxMeleeUnitsCount = 20;
 
-        public const int MaxRangedUnitsCount = 60;
+        public const int MaxRangedUnitsCount = 80;
 
         public const int DangerDistance = 10;
 

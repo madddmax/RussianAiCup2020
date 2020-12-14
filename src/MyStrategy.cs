@@ -43,43 +43,32 @@ namespace Aicup2020
                 }
             }
 
-            EntityType? buildEntityType = null;
-            if (ScoreMap.MyActiveRangedBases.Count == 0 && ScoreMap.Limit > 10)
+            // building
+            if (ScoreMap.MyActiveRangedBases.Count == 0 &&
+                ScoreMap.Limit >= 15 &&
+                ScoreMap.MyResource >= ScoreMap.RangedBaseProperties.InitialCost &&
+                ScoreMap.MyNotActiveRangedBases.Count == 0)
             {
-                buildEntityType = EntityType.RangedBase;
+                SetBuildAction(EntityType.RangedBase, ScoreMap.RangedBaseProperties.Size, entityActions);
+                ScoreMap.MyResource -= ScoreMap.RangedBaseProperties.InitialCost;
             }
 
-            if (buildEntityType == null &&
-                ScoreMap.Limit + 10 > ScoreMap.AvailableLimit && 
-                ScoreMap.MyNotActiveHouses.Count < 2)
+            if (((ScoreMap.MyActiveRangedBases.Count == 0 &&
+                  ScoreMap.Limit >= 15 &&
+                  ScoreMap.MyResource >=
+                  ScoreMap.RangedBaseProperties.InitialCost + ScoreMap.HouseProperties.InitialCost) ||
+
+                 ((ScoreMap.MyActiveRangedBases.Count > 0 ||
+                   ScoreMap.MyNotActiveRangedBases.Count > 0 ||
+                   ScoreMap.Limit < 15) &&
+                  ScoreMap.MyResource >= ScoreMap.HouseProperties.InitialCost)
+                ) &&
+                ScoreMap.Limit + 10 >= ScoreMap.AvailableLimit &&
+                ScoreMap.MyNotActiveHouses.Count <= 1)
             {
-                buildEntityType = EntityType.House;
+                SetBuildAction(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
+                ScoreMap.MyResource -= ScoreMap.HouseProperties.InitialCost;
             }
-
-            if (buildEntityType != null)
-            {
-                foreach (Entity builder in ScoreMap.MyBuilderUnits)
-                {
-                    var buildEntity = playerView.EntityProperties[buildEntityType.Value];
-
-                    if (ScoreMap.MyResource >= buildEntity.InitialCost && builder.Position.X + 1 < 80)
-                    {
-                        var buildPosition = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
-                        var buildingNeighbors = buildPosition.Neighbors(buildEntity.Size);
-
-                        if (ScoreMap.Passable(buildPosition) && ScoreMap.PassableLeft(buildPosition, buildEntity.Size) && buildingNeighbors.All(ScoreMap.PassableInFuture))
-                        {
-                            var buildAction = new BuildAction(buildEntityType.Value, buildPosition);
-                            entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
-
-                            ScoreMap.BuildLeft(buildPosition, buildEntity.Size);
-                            ScoreMap.MyResource -= buildEntity.InitialCost;
-                            break;
-                        }
-                    }
-                }
-            }
-
 
             foreach (Entity entity in playerView.Entities)
             {
@@ -105,8 +94,7 @@ namespace Aicup2020
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost * 2 ||
                             !IsDanger && ScoreMap.MyResource >= unitCost) &&
-                            ScoreMap.MyBuilderUnits.Count * 5 <= ScoreMap.Resources.Count &&
-                            ScoreMap.MyBuilderUnits.Count <= Params.MaxBuilderUnitsCount)
+                            ScoreMap.MyBuilderUnits.Count < Params.MaxBuilderUnitsCount)
                         {
                             SetBuildUnitAction(entity, EntityType.BuilderUnit, unitCost, entityActions);
                         }
@@ -139,7 +127,7 @@ namespace Aicup2020
                         if ((IsDanger && ScoreMap.MyResource >= unitCost ||
                              !IsDanger && ScoreMap.MyResource >= unitCost * 2) &&
                             ScoreMap.MyRangedUnits.Count * 2 >= Params.MaxRangedUnitsCount &&
-                            ScoreMap.MyMeleeUnits.Count <= Params.MaxMeleeUnitsCount)
+                            ScoreMap.MyMeleeUnits.Count < Params.MaxMeleeUnitsCount)
                         {
                             SetBuildUnitAction(entity, EntityType.MeleeUnit, unitCost, entityActions);
                         }
@@ -173,7 +161,7 @@ namespace Aicup2020
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost ||
                              !IsDanger && ScoreMap.MyResource >= unitCost * 3) &&
-                            ScoreMap.MyRangedUnits.Count <= Params.MaxRangedUnitsCount)
+                            ScoreMap.MyRangedUnits.Count < Params.MaxRangedUnitsCount)
                         {
                             SetBuildUnitAction(entity, EntityType.RangedUnit, unitCost, entityActions);
                         }
@@ -212,6 +200,53 @@ namespace Aicup2020
             }
 
             return new Action(entityActions);
+        }
+
+        private static void SetBuildAction(EntityType buildEntityType, int size, Dictionary<int, EntityAction> entityActions)
+        {
+            foreach (Entity builder in ScoreMap.MyBuilderUnits)
+            {
+                if (entityActions.ContainsKey(builder.Id))
+                {
+                    continue;
+                }
+
+                if (builder.Position.X + 1 < 80)
+                {
+                    var buildPositionLeft = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
+                    var buildingNeighbors = buildPositionLeft.Neighbors(size);
+
+                    if (ScoreMap.Passable(buildPositionLeft) &&
+                        ScoreMap.PassableLeft(buildPositionLeft, size) &&
+                        (size > 3 ||
+                         buildingNeighbors.All(ScoreMap.PassableInFuture)))
+                    {
+                        var buildAction = new BuildAction(buildEntityType, buildPositionLeft);
+                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
+
+                        ScoreMap.BuildLeft(buildPositionLeft, size);
+                        break;
+                    }
+                }
+
+                if (builder.Position.Y + 1 < 80)
+                {
+                    var buildPositionDown = new Vec2Int(builder.Position.X, builder.Position.Y + 1);
+                    var buildingNeighbors = buildPositionDown.Neighbors(size);
+
+                    if (ScoreMap.Passable(buildPositionDown) &&
+                        ScoreMap.PassableLeft(buildPositionDown, size) &&
+                        (size > 3 ||
+                        buildingNeighbors.All(ScoreMap.PassableInFuture)))
+                    {
+                        var buildAction = new BuildAction(buildEntityType, buildPositionDown);
+                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
+
+                        ScoreMap.BuildLeft(buildPositionDown, size);
+                        break;
+                    }
+                }
+            }
         }
 
         private static void SetBuildUnitAction(Entity entity, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
