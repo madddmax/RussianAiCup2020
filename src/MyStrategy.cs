@@ -81,11 +81,46 @@ namespace Aicup2020
 
                 switch (entity.EntityType)
                 {
-                    case EntityType.Wall:
-                        continue;
+                    case EntityType.BuilderUnit:
+                    {
+                        SetBuilderRepairAction(playerView, entity, entityActions);
+                        SetBuilderAttackAction(entity, entityActions);
 
-                    case EntityType.House:
+                        var target = ScoreMap.Resources.Count > 0
+                            ? ScoreMap.Resources.Last().Position
+                            : (Vec2Int?)null;
+
+                        SetMoveAction(entity, target, entityActions, false);
                         continue;
+                    }
+
+                    case EntityType.MeleeUnit:
+                    {
+                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
+                            ? ScoreMap.MyBuilderUnits.Last().Position
+                            : (Vec2Int?)null;
+
+                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
+                            ? distantBuilderPosition
+                            : NearestEnemy?.Position;
+
+                        SetMoveAction(entity, target, entityActions, true);
+                        continue;
+                    }
+
+                    case EntityType.RangedUnit:
+                    {
+                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
+                            ? ScoreMap.MyBuilderUnits.Last().Position
+                            : (Vec2Int?)null;
+
+                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
+                            ? distantBuilderPosition
+                            : NearestEnemy?.Position;
+
+                        SetMoveAction(entity, target, entityActions, true);
+                        continue;
+                    }
 
                     case EntityType.BuilderBase:
                     {
@@ -104,18 +139,6 @@ namespace Aicup2020
                             entityActions.Add(entity.Id, new EntityAction(null, null, null, null));
                         }
 
-                        continue;
-                    }
-                    case EntityType.BuilderUnit:
-                    {
-                        SetBuilderRepairAction(playerView, entity, entityActions);
-                        SetBuilderAttackAction(entity, entityActions);
-
-                        var target = ScoreMap.Resources.Count > 0
-                            ? ScoreMap.Resources.Last().Position
-                            : (Vec2Int?) null;
-
-                        SetMoveAction(entity, target, entityActions, false);
                         continue;
                     }
 
@@ -140,20 +163,6 @@ namespace Aicup2020
                         continue;
                     }
 
-                    case EntityType.MeleeUnit:
-                    {
-                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
-                            ? ScoreMap.MyBuilderUnits.Last().Position
-                            : (Vec2Int?) null;
-
-                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
-                            ? distantBuilderPosition
-                            : NearestEnemy?.Position;
-
-                        SetMoveAction(entity, target, entityActions, true);
-                        continue;
-                    }
-
                     case EntityType.RangedBase:
                     {
                         var unitProperties = playerView.EntityProperties[EntityType.RangedUnit];
@@ -173,22 +182,6 @@ namespace Aicup2020
 
                         continue;
                     }
-
-                    case EntityType.RangedUnit:
-                    {
-                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
-                            ? ScoreMap.MyBuilderUnits.Last().Position
-                            : (Vec2Int?)null;
-
-                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
-                            ? distantBuilderPosition
-                            : NearestEnemy?.Position;
-
-                        SetMoveAction(entity, target, entityActions, true);
-                        continue;
-                    }
-                    case EntityType.Resource:
-                        continue;
 
                     case EntityType.Turret:
                     {
