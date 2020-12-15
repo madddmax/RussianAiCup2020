@@ -45,7 +45,7 @@ namespace Aicup2020
 
             // building
             if (ScoreMap.MyActiveRangedBases.Count == 0 &&
-                ScoreMap.Limit >= 15 &&
+                ScoreMap.Limit >= Params.RangedBaseBuildingLimit &&
                 ScoreMap.MyResource >= ScoreMap.RangedBaseProperties.InitialCost &&
                 ScoreMap.MyNotActiveRangedBases.Count == 0)
             {
@@ -54,16 +54,16 @@ namespace Aicup2020
             }
 
             if (((ScoreMap.MyActiveRangedBases.Count == 0 &&
-                  ScoreMap.Limit >= 15 &&
+                  ScoreMap.Limit >= Params.RangedBaseBuildingLimit &&
                   ScoreMap.MyResource >=
                   ScoreMap.RangedBaseProperties.InitialCost + ScoreMap.HouseProperties.InitialCost) ||
 
                  ((ScoreMap.MyActiveRangedBases.Count > 0 ||
                    ScoreMap.MyNotActiveRangedBases.Count > 0 ||
-                   ScoreMap.Limit < 15) &&
+                   ScoreMap.Limit < Params.RangedBaseBuildingLimit) &&
                   ScoreMap.MyResource >= ScoreMap.HouseProperties.InitialCost)
                 ) &&
-                ScoreMap.Limit + 10 >= ScoreMap.AvailableLimit &&
+                ScoreMap.Limit >= ScoreMap.AvailableLimit &&
                 ScoreMap.MyNotActiveHouses.Count <= 1)
             {
                 SetBuildAction(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
