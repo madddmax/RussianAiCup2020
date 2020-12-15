@@ -80,6 +80,33 @@ namespace Aicup2020.MyModel
             return neighbors;
         }
 
+        public static List<Vec2Int> Diagonals(this Vec2Int p, int size)
+        {
+            var diagonals = new List<Vec2Int>();
+
+            if (p.X - 1 >= 0 && p.Y - 1 >= 0)
+            {
+                diagonals.Add(new Vec2Int(p.X - 1, p.Y - 1));
+            }
+
+            if (p.X + size < 80 && p.Y - 1 >= 0)
+            {
+                diagonals.Add(new Vec2Int(p.X + size, p.Y - 1));
+            }
+
+            if (p.X + size < 80 && p.Y + size < 80)
+            {
+                diagonals.Add(new Vec2Int(p.X + size, p.Y + size));
+            }
+
+            if (p.X - 1 >= 0 && p.Y + size < 80)
+            {
+                diagonals.Add(new Vec2Int(p.X - 1, p.Y + size));
+            }
+
+            return diagonals;
+        }
+
         // Neighbors with left down corner
         public static List<Vec2Int> BuildPositions(this Vec2Int p, int size)
         {

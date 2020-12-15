@@ -214,11 +214,12 @@ namespace Aicup2020
                 var buildPositions = builder.Position.BuildPositions(size);
                 foreach (var position in buildPositions)
                 {
-                    var buildingNeighbors = position.Neighbors(size);
+                    var diagonals = position.Diagonals(size);
+                    var neighbors = position.Neighbors(size);
 
                     if (ScoreMap.Passable(position, size) &&
-                        (size > 3 ||
-                         buildingNeighbors.All(ScoreMap.PassableInFuture)))
+                        diagonals.All(ScoreMap.PassableInFuture) &&
+                        (size > 3 || neighbors.All(ScoreMap.PassableInFuture)))
                     {
                         var buildAction = new BuildAction(buildEntityType, position);
                         entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
