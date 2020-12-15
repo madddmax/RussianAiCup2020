@@ -301,10 +301,10 @@ namespace Aicup2020
             var frontier = new PriorityQueue<Vec2Int>();
             frontier.Enqueue(entity.Position, 0);
 
-            //var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
+            var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
             var costSoFar = new Dictionary<Vec2Int, int>();
 
-            //cameFrom[entity.Position] = entity.Position;
+            cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
 
             for (int i = 0; i < Params.MaxSearchMove && frontier.Count > 0; i++)
@@ -315,7 +315,7 @@ namespace Aicup2020
                     (ScoreMap.Get(current).ResourceScore > 0 ||
                      ScoreMap.Get(current).RepairScore > 0))
                 {
-                    moveTarget = current;
+                    moveTarget = GetMoveTarget(entity, current, cameFrom);
                     break;
                 }
 
@@ -323,7 +323,7 @@ namespace Aicup2020
                     entity.EntityType == EntityType.RangedUnit) &&
                     ScoreMap.Get(current).AttackScore > 0)
                 {
-                    moveTarget = current;
+                    moveTarget = GetMoveTarget(entity, current, cameFrom);
                     break;
                 }
 
@@ -334,7 +334,7 @@ namespace Aicup2020
                     {
                         costSoFar[next] = newCost;
                         frontier.Enqueue(next, newCost);
-                        //cameFrom[next] = current;
+                        cameFrom[next] = current;
                     }
                 }
             }
@@ -344,11 +344,11 @@ namespace Aicup2020
                 moveTarget = approxTarget;
             }
 
-            //if (moveTarget != null)
-            //{
-            //    Map[entity.Position.X, entity.Position.Y] = null;
-            //    Map[moveTarget.X, moveTarget.Y] = entity;
-            //}
+            if (moveTarget != null)
+            {
+                ScoreMap.Set(entity.Position, null);
+                ScoreMap.Set(moveTarget.Value, entity);
+            }
 
             AttackAction? attackAction = null;
             if (addAutoAttack)
@@ -358,6 +358,19 @@ namespace Aicup2020
 
             var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
+        }
+
+        private static Vec2Int GetMoveTarget(Entity entity, Vec2Int current, Dictionary<Vec2Int, Vec2Int> cameFrom)
+        {
+            Vec2Int prevPosition;
+            var fromPosition = current;
+            do
+            {
+                prevPosition = fromPosition;
+                fromPosition = cameFrom[fromPosition];
+            } while (fromPosition.X != entity.Position.X || fromPosition.Y != entity.Position.Y);
+
+            return prevPosition;
         }
 
         public void DebugUpdate(PlayerView playerView, DebugInterface debugInterface) 

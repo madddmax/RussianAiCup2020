@@ -321,6 +321,11 @@ namespace Aicup2020.MyModel
             return true;
         }
 
+        public static void Set(Vec2Int p, Entity? entity)
+        {
+            Map[p.X, p.Y].Entity = entity;
+        }
+
         public static void Build(Vec2Int p, int size)
         {
             for (int x = 0; x < size; x++)
