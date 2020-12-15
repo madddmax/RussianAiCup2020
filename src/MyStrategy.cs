@@ -211,39 +211,20 @@ namespace Aicup2020
                     continue;
                 }
 
-                if (builder.Position.X + 1 < 80)
+                var buildPositions = builder.Position.BuildPositions(size);
+                foreach (var position in buildPositions)
                 {
-                    var buildPositionLeft = new Vec2Int(builder.Position.X + 1, builder.Position.Y);
-                    var buildingNeighbors = buildPositionLeft.Neighbors(size);
+                    var buildingNeighbors = position.Neighbors(size);
 
-                    if (ScoreMap.Passable(buildPositionLeft) &&
-                        ScoreMap.PassableLeft(buildPositionLeft, size) &&
+                    if (ScoreMap.Passable(position, size) &&
                         (size > 3 ||
                          buildingNeighbors.All(ScoreMap.PassableInFuture)))
                     {
-                        var buildAction = new BuildAction(buildEntityType, buildPositionLeft);
+                        var buildAction = new BuildAction(buildEntityType, position);
                         entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
 
-                        ScoreMap.BuildLeft(buildPositionLeft, size);
-                        break;
-                    }
-                }
-
-                if (builder.Position.Y + 1 < 80)
-                {
-                    var buildPositionDown = new Vec2Int(builder.Position.X, builder.Position.Y + 1);
-                    var buildingNeighbors = buildPositionDown.Neighbors(size);
-
-                    if (ScoreMap.Passable(buildPositionDown) &&
-                        ScoreMap.PassableLeft(buildPositionDown, size) &&
-                        (size > 3 ||
-                        buildingNeighbors.All(ScoreMap.PassableInFuture)))
-                    {
-                        var buildAction = new BuildAction(buildEntityType, buildPositionDown);
-                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
-
-                        ScoreMap.BuildLeft(buildPositionDown, size);
-                        break;
+                        ScoreMap.Build(position, size);
+                        return;
                     }
                 }
             }
@@ -259,7 +240,7 @@ namespace Aicup2020
                     var buildAction = new BuildAction(buildUnit, position);
                     entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
 
-                    ScoreMap.BuildLeft(position, 1);
+                    ScoreMap.Build(position, 1);
                     ScoreMap.MyResource -= unitCost;
                     break;
                 }

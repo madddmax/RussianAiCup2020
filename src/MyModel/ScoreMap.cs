@@ -295,7 +295,7 @@ namespace Aicup2020.MyModel
                    entity.Value.EntityType == EntityType.RangedUnit;
         }
 
-        public static bool PassableLeft(Vec2Int p, int size)
+        public static bool Passable(Vec2Int p, int size)
         {
             for (int x = 0; x < size; x++)
             {
@@ -321,7 +321,7 @@ namespace Aicup2020.MyModel
             return true;
         }
 
-        public static void BuildLeft(Vec2Int p, int size)
+        public static void Build(Vec2Int p, int size)
         {
             for (int x = 0; x < size; x++)
             {

@@ -10,12 +10,6 @@ namespace Aicup2020.MyModel
         {
             var neighbors = new List<Vec2Int>();
 
-            // left
-            if (p.X + 1 < 80)
-            {
-                neighbors.Add(new Vec2Int(p.X + 1, p.Y));
-            }
-
             // up
             if (p.Y - 1 >= 0)
             {
@@ -34,21 +28,18 @@ namespace Aicup2020.MyModel
                 neighbors.Add(new Vec2Int(p.X, p.Y + 1));
             }
 
+            // left
+            if (p.X + 1 < 80)
+            {
+                neighbors.Add(new Vec2Int(p.X + 1, p.Y));
+            }
+
             return neighbors;
         }
 
         public static List<Vec2Int> Neighbors(this Vec2Int p, int size)
         {
             var neighbors = new List<Vec2Int>();
-
-            // left
-            if (p.X + size < 80)
-            {
-                for (int i = 0; i < size; i++)
-                {
-                    neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
-                }
-            }
 
             // up
             if (p.Y - 1 >= 0)
@@ -77,7 +68,72 @@ namespace Aicup2020.MyModel
                 }
             }
 
+            // left
+            if (p.X + size < 80)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
+                }
+            }
+
             return neighbors;
+        }
+
+        // Neighbors with left down corner
+        public static List<Vec2Int> BuildPositions(this Vec2Int p, int size)
+        {
+            var buildPositions = new List<Vec2Int>();
+
+            // up
+            if (p.Y - size >= 0)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    if (p.X - i >= 0)
+                    {
+                        buildPositions.Add(new Vec2Int(p.X - i, p.Y - size));
+                    }
+                }
+            }
+
+            // right
+            if (p.X - size >= 0)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    if (p.Y - i >= 0)
+                    {
+                        buildPositions.Add(new Vec2Int(p.X - size, p.Y - i));
+                    }
+                }
+            }
+
+            // down
+            if (p.Y + 1 < 80)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    if (p.X - i >= 0)
+                    {
+                        buildPositions.Add(new Vec2Int(p.X - i, p.Y + 1));
+                    }
+                }
+            }
+
+            // left
+            if (p.X + 1 < 80)
+            {
+                for (int i = 0; i < size; i++)
+                {
+                    if (p.Y - i >= 0)
+                    {
+                        buildPositions.Add(new Vec2Int(p.X + 1, p.Y - i));
+                    }
+                }
+            }
+
+            return buildPositions;
         }
 
         public static int Distance(this Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
