@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using Aicup2020.Model;
 
 namespace Aicup2020.MyModel
@@ -106,6 +107,34 @@ namespace Aicup2020.MyModel
 
             return diagonals;
         }
+
+        public static List<Vec2Int> Radius(this Vec2Int p, int size)
+        {
+            var radius = new List<Vec2Int>();
+
+            for (int x = p.X - size; x <= p.X + size; x++)
+            {
+                for (int y = p.Y - size; y <= p.Y + size; y++)
+                {
+                    if (!InBounds(x, y))
+                    {
+                        continue;
+                    }
+
+                    int delta = Math.Abs(x - p.X) + Math.Abs(y - p.Y);
+                    if (delta > 0 && delta <= size)
+                    {
+                        radius.Add(new Vec2Int(x, y));
+                    }
+                }
+            }
+
+            return radius;
+        }
+
+        private static bool InBounds(Vec2Int p) => p.X >= 0 && p.Y >= 0 && p.X < 80 && p.Y < 80;
+
+        private static bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < 80 && y < 80;
 
         // Neighbors with left down corner
         public static List<Vec2Int> BuildPositions(this Vec2Int p, int size)
