@@ -12,6 +12,6 @@
 
         public const int DangerDistance = 10;
 
-        public const int MaxSearchMove = 200;
+        public const int MaxSearchMove = 300;
     }
 }

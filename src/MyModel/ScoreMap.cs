@@ -64,11 +64,7 @@ namespace Aicup2020.MyModel
             {
                 for (int x = 0; x < 80; x++)
                 {
-                    Map[x, y] = new ScoreCell
-                    {
-                        Entity = null,
-                        ResourceScore = 0
-                    };
+                    Map[x, y] = new ScoreCell();
                 }
             }
 
@@ -248,6 +244,20 @@ namespace Aicup2020.MyModel
                             {
                                 Map[target.X, target.Y].AttackScore = 1;
                             }
+                        }
+                    }
+
+                    // check damage
+                    if (entity.PlayerId != MyId &&
+                        (entity.EntityType == EntityType.MeleeUnit ||
+                         entity.EntityType == EntityType.RangedUnit ||
+                         entity.EntityType == EntityType.Turret))
+                    {
+                        int size = entity.EntityType != EntityType.MeleeUnit ? 5 : 1;
+                        var range = entity.Position.Range(size);
+                        foreach (var point in range)
+                        {
+                            Map[point.X, point.Y].DamageScore += 5;
                         }
                     }
                 }

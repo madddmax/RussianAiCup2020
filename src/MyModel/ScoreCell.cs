@@ -12,6 +12,8 @@ namespace Aicup2020.MyModel
 
         public int AttackScore;
 
+        public int DamageScore;
+
         public int ScoutScore;
 
         // other scores

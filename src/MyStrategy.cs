@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Aicup2020.Model;
 using Aicup2020.MyModel;
@@ -43,6 +44,16 @@ namespace Aicup2020
                 }
             }
 
+            // repairing
+            foreach (Entity entity in playerView.Entities)
+            {
+                if (entity.PlayerId == ScoreMap.MyId &&
+                    entity.EntityType == EntityType.BuilderUnit)
+                {
+                    SetBuilderRepairAction(playerView, entity, entityActions);
+                }
+            }
+
             // building
             if (ScoreMap.MyActiveRangedBases.Count == 0 &&
                 ScoreMap.Limit >= Params.RangedBaseBuildingLimit &&
@@ -63,7 +74,7 @@ namespace Aicup2020
                    ScoreMap.Limit < Params.RangedBaseBuildingLimit) &&
                   ScoreMap.MyResource >= ScoreMap.HouseProperties.InitialCost)
                 ) &&
-                ScoreMap.Limit >= ScoreMap.AvailableLimit &&
+                ScoreMap.Limit + 10 >= ScoreMap.AvailableLimit &&
                 ScoreMap.MyNotActiveHouses.Count <= 1)
             {
                 SetBuildAction(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
@@ -83,7 +94,6 @@ namespace Aicup2020
                 {
                     case EntityType.BuilderUnit:
                     {
-                        SetBuilderRepairAction(playerView, entity, entityActions);
                         SetBuilderAttackAction(entity, entityActions);
 
                         var target = ScoreMap.Resources.Count > 0
@@ -96,28 +106,14 @@ namespace Aicup2020
 
                     case EntityType.MeleeUnit:
                     {
-                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
-                            ? ScoreMap.MyBuilderUnits.Last().Position
-                            : (Vec2Int?)null;
-
-                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
-                            ? distantBuilderPosition
-                            : NearestEnemy?.Position;
-
+                        var target = NearestEnemy?.Position;
                         SetMoveAction(entity, target, entityActions, true);
                         continue;
                     }
 
                     case EntityType.RangedUnit:
                     {
-                        var distantBuilderPosition = ScoreMap.MyBuilderUnits.Count > 0
-                            ? ScoreMap.MyBuilderUnits.Last().Position
-                            : (Vec2Int?)null;
-
-                        var target = !IsDanger && ScoreMap.MyBuilderUnits.Count > 0 && ScoreMap.MyMeleeUnits.Count < 3 && ScoreMap.MyRangedUnits.Count < 6
-                            ? distantBuilderPosition
-                            : NearestEnemy?.Position;
-
+                        var target = NearestEnemy?.Position;
                         SetMoveAction(entity, target, entityActions, true);
                         continue;
                     }
@@ -296,52 +292,105 @@ namespace Aicup2020
             }
 
             // AStarSearch
-            Vec2Int? moveTarget = null;
-
             var frontier = new PriorityQueue<Vec2Int>();
             frontier.Enqueue(entity.Position, 0);
 
             var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
             var costSoFar = new Dictionary<Vec2Int, int>();
+            var costScore = new Dictionary<Vec2Int, int>();
 
-            cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
+            costScore[entity.Position] = 0;
 
             for (int i = 0; i < Params.MaxSearchMove && frontier.Count > 0; i++)
             {
                 var current = frontier.Dequeue();
+                var neighbors = current.Neighbors();
 
-                if (entity.EntityType == EntityType.BuilderUnit &&
-                    (ScoreMap.Get(current).ResourceScore > 0 ||
-                     ScoreMap.Get(current).RepairScore > 0))
-                {
-                    moveTarget = GetMoveTarget(entity, current, cameFrom);
-                    break;
-                }
-
-                if ((entity.EntityType == EntityType.MeleeUnit || 
-                    entity.EntityType == EntityType.RangedUnit) &&
-                    ScoreMap.Get(current).AttackScore > 0)
-                {
-                    moveTarget = GetMoveTarget(entity, current, cameFrom);
-                    break;
-                }
-
-                foreach (Vec2Int next in current.Neighbors())
+                foreach (Vec2Int next in neighbors)
                 {
                     int newCost = costSoFar[current] + 1;
+
+                    var scoreCell = ScoreMap.Get(next);
+                    int newScoreCost = costScore[current] + scoreCell.DamageScore;
+
                     if (ScoreMap.Passable(next) && (!costSoFar.ContainsKey(next) || newCost < costSoFar[next]))
                     {
+                        // todo merge costs
                         costSoFar[next] = newCost;
+                        costScore[next] = newScoreCost;
+
                         frontier.Enqueue(next, newCost);
                         cameFrom[next] = current;
                     }
                 }
             }
 
+            Vec2Int? bestTarget = null;
+            foreach (var target in cameFrom)
+            {
+                var current = target.Key;
+                var scoreCell = ScoreMap.Get(current);
+
+                if (entity.EntityType == EntityType.BuilderUnit &&
+                    (
+                        scoreCell.ResourceScore > 0 ||
+                        scoreCell.RepairScore > 0
+                    ) &&
+                    (
+                        bestTarget == null ||
+                        costSoFar[current] < costSoFar[bestTarget.Value]
+                    ) && 
+                    scoreCell.DamageScore == 0
+                    )
+                {
+                    bestTarget = current;
+                }
+
+                if ((
+                        entity.EntityType == EntityType.MeleeUnit ||
+                        entity.EntityType == EntityType.RangedUnit
+                    ) &&
+                    scoreCell.AttackScore > 0 &&
+                    (
+                        bestTarget == null ||
+                        costSoFar[current] < costSoFar[bestTarget.Value]
+                    )
+                )
+                {
+                    bestTarget = current;
+                }
+            }
+
+            Vec2Int? moveTarget = null;
+            if (bestTarget != null)
+            {
+                moveTarget = GetMoveTarget(bestTarget.Value, cameFrom, costSoFar);
+            }
+
             if (moveTarget == null && approxTarget != null)
             {
-                moveTarget = approxTarget;
+                int approxTargetDistance = int.MaxValue;
+
+                foreach (var target in cameFrom)
+                {
+                    var current = target.Key;
+                    var scoreCell = ScoreMap.Get(current);
+
+                    if (moveTarget == null ||
+                        approxTarget.Value.Distance(current) < approxTargetDistance)
+                    {
+                        if (entity.EntityType == EntityType.BuilderUnit &&
+                            scoreCell.DamageScore > 0)
+                        {
+                            continue;
+                        }
+
+                        // todo depth
+                        moveTarget = GetMoveTarget(current, cameFrom, costSoFar);
+                        approxTargetDistance = approxTarget.Value.Distance(current);
+                    }
+                }
             }
 
             if (moveTarget != null)
@@ -360,17 +409,16 @@ namespace Aicup2020
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
         }
 
-        private static Vec2Int GetMoveTarget(Entity entity, Vec2Int current, Dictionary<Vec2Int, Vec2Int> cameFrom)
+        private static Vec2Int GetMoveTarget(Vec2Int current, Dictionary<Vec2Int, Vec2Int> cameFrom, Dictionary<Vec2Int, int> costSoFar)
         {
-            Vec2Int prevPosition;
             var fromPosition = current;
-            do
-            {
-                prevPosition = fromPosition;
-                fromPosition = cameFrom[fromPosition];
-            } while (fromPosition.X != entity.Position.X || fromPosition.Y != entity.Position.Y);
 
-            return prevPosition;
+            while (costSoFar[fromPosition] > 1)
+            {
+                fromPosition = cameFrom[fromPosition];
+            }
+
+            return fromPosition;
         }
 
         public void DebugUpdate(PlayerView playerView, DebugInterface debugInterface) 

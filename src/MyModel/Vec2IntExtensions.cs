@@ -108,7 +108,7 @@ namespace Aicup2020.MyModel
             return diagonals;
         }
 
-        public static List<Vec2Int> Radius(this Vec2Int p, int size)
+        public static List<Vec2Int> Range(this Vec2Int p, int size)
         {
             var radius = new List<Vec2Int>();
 
@@ -121,8 +121,8 @@ namespace Aicup2020.MyModel
                         continue;
                     }
 
-                    int delta = Math.Abs(x - p.X) + Math.Abs(y - p.Y);
-                    if (delta > 0 && delta <= size)
+                    int distance = p.Distance(x, y);
+                    if (distance > 0 && distance <= size)
                     {
                         radius.Add(new Vec2Int(x, y));
                     }
@@ -193,5 +193,7 @@ namespace Aicup2020.MyModel
         }
 
         public static int Distance(this Vec2Int p1, Vec2Int p2) => Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
+
+        public static int Distance(this Vec2Int p1, int x, int y) => Math.Abs(p1.X - x) + Math.Abs(p1.Y - y);
     }
 }
