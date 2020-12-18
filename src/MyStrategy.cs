@@ -76,15 +76,21 @@ namespace Aicup2020
 
                     case EntityType.MeleeUnit:
                     {
-                        var approxTarget = CombatUnitAction.GetApproxTarget(entity);
+                        var approxTarget = CombatUnitAction.SetAttack(entity, 1, entityActions);
                         SetMoveAction(entity, approxTarget, entityActions, true);
                         continue;
                     }
 
                     case EntityType.RangedUnit:
                     {
-                        var approxTarget = CombatUnitAction.GetApproxTarget(entity);
+                        var approxTarget = CombatUnitAction.SetAttack(entity, 5,  entityActions);
                         SetMoveAction(entity, approxTarget, entityActions, true);
+                        continue;
+                    }
+
+                    case EntityType.Turret:
+                    {
+                        CombatUnitAction.SetAttack(entity, 5, entityActions);
                         continue;
                     }
 
@@ -146,13 +152,6 @@ namespace Aicup2020
                             entityActions.Add(entity.Id, new EntityAction(null, null, null, null));
                         }
 
-                        continue;
-                    }
-
-                    case EntityType.Turret:
-                    {
-                        var attackAction = new AttackAction(null, new AutoAttack(properties.SightRange, ScoreMap.UnitTargets));
-                        entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
                         continue;
                     }
                 }
@@ -240,9 +239,9 @@ namespace Aicup2020
             }
 
             Vec2Int? bestTarget = null;
-            foreach (var target in costSoFar)
+            foreach (var cost in costScore)
             {
-                var current = target.Key;
+                var current = cost.Key;
                 var scoreCell = ScoreMap.Get(current);
 
                 if (entity.EntityType == EntityType.BuilderUnit &&
@@ -253,7 +252,7 @@ namespace Aicup2020
                     (
                         bestTarget == null ||
                         costSoFar[current] < costSoFar[bestTarget.Value]
-                    ) && 
+                    ) &&
                     scoreCell.DamageScore == 0
                     )
                 {
@@ -285,9 +284,9 @@ namespace Aicup2020
             {
                 int approxTargetDistance = int.MaxValue;
 
-                foreach (var target in costSoFar)
+                foreach (var cost in costScore)
                 {
-                    var current = target.Key;
+                    var current = cost.Key;
                     var scoreCell = ScoreMap.Get(current);
 
                     if ((moveTarget == null ||
@@ -307,16 +306,8 @@ namespace Aicup2020
                 ScoreMap.Set(moveTarget.Value, entity);
             }
 
-            bool breakThrough = false;
-            AttackAction? attackAction = null;
-            if (addAutoAttack)
-            {
-                breakThrough = true;
-                attackAction = new AttackAction(null, new AutoAttack(10, ScoreMap.UnitTargets));
-            }
-
-            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, breakThrough) : (MoveAction?) null;
-            entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
+            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, true) : (MoveAction?) null;
+            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
         private static Vec2Int GetMoveTarget(Vec2Int current, Dictionary<Vec2Int, Vec2Int> cameFrom, Dictionary<Vec2Int, int> costSoFar)
