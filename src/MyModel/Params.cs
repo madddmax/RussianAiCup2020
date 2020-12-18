@@ -18,6 +18,6 @@
 
         public const int EnemyRangedFearSize = 10;
 
-        public const int EnemyMeleeFearSize = 2;
+        public const int EnemyMeleeFearSize = 3;
     }
 }

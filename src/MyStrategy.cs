@@ -61,8 +61,6 @@ namespace Aicup2020
                     continue;
                 }
 
-                var properties = playerView.EntityProperties[entity.EntityType];
-
                 switch (entity.EntityType)
                 {
                     case EntityType.BuilderUnit:
@@ -70,21 +68,21 @@ namespace Aicup2020
                         BuilderUnitActions.SetAttack(entity, entityActions);
 
                         var approxTarget = BuilderUnitActions.GetApproxTarget(entity);
-                        SetMoveAction(entity, approxTarget, entityActions, false);
+                        SetMoveAction(entity, approxTarget, entityActions);
                         continue;
                     }
 
                     case EntityType.MeleeUnit:
                     {
                         var approxTarget = CombatUnitAction.SetAttack(entity, 1, entityActions);
-                        SetMoveAction(entity, approxTarget, entityActions, true);
+                        SetMoveAction(entity, approxTarget, entityActions);
                         continue;
                     }
 
                     case EntityType.RangedUnit:
                     {
                         var approxTarget = CombatUnitAction.SetAttack(entity, 5,  entityActions);
-                        SetMoveAction(entity, approxTarget, entityActions, true);
+                        SetMoveAction(entity, approxTarget, entityActions);
                         continue;
                     }
 
@@ -195,7 +193,7 @@ namespace Aicup2020
             }
         }
 
-        private static void SetMoveAction(Entity entity, Vec2Int? approxTarget, Dictionary<int, EntityAction> entityActions, bool addAutoAttack)
+        private static void SetMoveAction(Entity entity, Vec2Int? approxTarget, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
@@ -289,14 +287,28 @@ namespace Aicup2020
                     var current = cost.Key;
                     var scoreCell = ScoreMap.Get(current);
 
-                    if ((moveTarget == null ||
-                        approxTarget.Value.Distance(current) < approxTargetDistance) &&
-                        (entity.EntityType != EntityType.BuilderUnit || scoreCell.DamageScore == 0))
+                    if (entity.EntityType == EntityType.BuilderUnit)
                     {
-                        // todo depth
-                        moveTarget = GetMoveTarget(current, cameFrom, costSoFar);
-                        approxTargetDistance = approxTarget.Value.Distance(current);
+                        if ((moveTarget == null ||
+                             approxTarget.Value.Distance(current) < approxTargetDistance) &&
+                            scoreCell.DamageScore == 0)
+                        {
+                            // todo depth
+                            moveTarget = GetMoveTarget(current, cameFrom, costSoFar);
+                            approxTargetDistance = approxTarget.Value.Distance(current);
+                        }
                     }
+                    else
+                    {
+                        if (moveTarget == null ||
+                            approxTarget.Value.Distance(current) < approxTargetDistance)
+                        {
+                            // todo depth
+                            moveTarget = GetMoveTarget(current, cameFrom, costSoFar);
+                            approxTargetDistance = approxTarget.Value.Distance(current);
+                        }
+                    }
+
                 }
             }
 
@@ -306,7 +318,7 @@ namespace Aicup2020
                 ScoreMap.Set(moveTarget.Value, entity);
             }
 
-            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, true) : (MoveAction?) null;
+            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 

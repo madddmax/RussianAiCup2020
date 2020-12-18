@@ -9,6 +9,11 @@ namespace Aicup2020.MyActions
     {
         public static Vec2Int? SetAttack(Entity entity, int range, Dictionary<int, EntityAction> entityActions)
         {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return null;
+            }
+
             Vec2Int? target = null;
             int minDistance = int.MaxValue;
 

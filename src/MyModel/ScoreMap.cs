@@ -318,8 +318,8 @@ namespace Aicup2020.MyModel
 
         public static bool Passable(Vec2Int p)
         {
-            return Map[p.X, p.Y].Entity == null ||
-                   Map[p.X, p.Y].Entity.Value.EntityType == EntityType.Resource;
+            return Map[p.X, p.Y].Entity == null;
+            //Map[p.X, p.Y].Entity.Value.EntityType == EntityType.Resource;
         }
 
         public static bool PassableInFuture(Vec2Int p) => PassableInFuture(p.X, p.Y);
