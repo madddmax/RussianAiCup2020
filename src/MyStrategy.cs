@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Aicup2020.Model;
+using Aicup2020.MyActions;
 using Aicup2020.MyModel;
 
 namespace Aicup2020
@@ -50,7 +50,7 @@ namespace Aicup2020
                 if (entity.PlayerId == ScoreMap.MyId &&
                     entity.EntityType == EntityType.BuilderUnit)
                 {
-                    SetBuilderRepairAction(playerView, entity, entityActions);
+                    BuilderUnitActions.SetRepair(playerView, entity, entityActions);
                 }
             }
 
@@ -60,7 +60,7 @@ namespace Aicup2020
                 ScoreMap.MyResource >= ScoreMap.RangedBaseProperties.InitialCost &&
                 ScoreMap.MyNotActiveRangedBases.Count == 0)
             {
-                SetBuildAction(EntityType.RangedBase, ScoreMap.RangedBaseProperties.Size, entityActions);
+                BuilderUnitActions.SetBuild(EntityType.RangedBase, ScoreMap.RangedBaseProperties.Size, entityActions);
                 ScoreMap.MyResource -= ScoreMap.RangedBaseProperties.InitialCost;
             }
 
@@ -77,7 +77,7 @@ namespace Aicup2020
                 ScoreMap.Limit + 10 >= ScoreMap.AvailableLimit &&
                 ScoreMap.MyNotActiveHouses.Count <= 1)
             {
-                SetBuildAction(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
+                BuilderUnitActions.SetBuild(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
                 ScoreMap.MyResource -= ScoreMap.HouseProperties.InitialCost;
             }
 
@@ -94,27 +94,24 @@ namespace Aicup2020
                 {
                     case EntityType.BuilderUnit:
                     {
-                        SetBuilderAttackAction(entity, entityActions);
+                        BuilderUnitActions.SetAttack(entity, entityActions);
 
-                        var target = ScoreMap.Resources.Count > 0
-                            ? ScoreMap.Resources.Last().Position
-                            : (Vec2Int?)null;
-
-                        SetMoveAction(entity, target, entityActions, false);
+                        var approxTarget = BuilderUnitActions.GetApproxTarget(entity);
+                        SetMoveAction(entity, approxTarget, entityActions, false);
                         continue;
                     }
 
                     case EntityType.MeleeUnit:
                     {
-                        var target = NearestEnemy?.Position;
-                        SetMoveAction(entity, target, entityActions, true);
+                        var approxTarget = CombatUnitAction.GetApproxTarget(entity);
+                        SetMoveAction(entity, approxTarget, entityActions, true);
                         continue;
                     }
 
                     case EntityType.RangedUnit:
                     {
-                        var target = NearestEnemy?.Position;
-                        SetMoveAction(entity, target, entityActions, true);
+                        var approxTarget = CombatUnitAction.GetApproxTarget(entity);
+                        SetMoveAction(entity, approxTarget, entityActions, true);
                         continue;
                     }
 
@@ -191,35 +188,6 @@ namespace Aicup2020
             return new Action(entityActions);
         }
 
-        private static void SetBuildAction(EntityType buildEntityType, int size, Dictionary<int, EntityAction> entityActions)
-        {
-            foreach (Entity builder in ScoreMap.MyBuilderUnits)
-            {
-                if (entityActions.ContainsKey(builder.Id))
-                {
-                    continue;
-                }
-
-                var buildPositions = builder.Position.BuildPositions(size);
-                foreach (var position in buildPositions)
-                {
-                    var diagonals = position.Diagonals(size);
-                    var neighbors = position.Neighbors(size);
-
-                    if (ScoreMap.Passable(position, size) &&
-                        diagonals.All(ScoreMap.PassableInFuture) &&
-                        (size > 3 || neighbors.All(ScoreMap.PassableInFuture)))
-                    {
-                        var buildAction = new BuildAction(buildEntityType, position);
-                        entityActions.Add(builder.Id, new EntityAction(null, buildAction, null, null));
-
-                        ScoreMap.Build(position, size);
-                        return;
-                    }
-                }
-            }
-        }
-
         private static void SetBuildUnitAction(Entity entity, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
         {
             var neighbors = entity.Position.Neighbors(5);
@@ -232,53 +200,6 @@ namespace Aicup2020
 
                     ScoreMap.Build(position, 1);
                     ScoreMap.MyResource -= unitCost;
-                    break;
-                }
-            }
-        }
-
-        private static void SetBuilderRepairAction(PlayerView playerView, Entity entity, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            var neighbors = entity.Position.Neighbors();
-            foreach (var target in neighbors)
-            {
-                var targetEntity = ScoreMap.Get(target).Entity;
-                if (targetEntity == null)
-                {
-                    continue;
-                }
-
-                var entityProperties = playerView.EntityProperties[targetEntity.Value.EntityType];
-                if (targetEntity.Value.PlayerId == ScoreMap.MyId && 
-                    targetEntity.Value.Health < entityProperties.MaxHealth)
-                {
-                    var repairAction = new RepairAction(targetEntity.Value.Id);
-                    entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
-                    break;
-                }
-            }
-        }
-
-        private static void SetBuilderAttackAction(Entity entity, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            var neighbors = entity.Position.Neighbors();
-            foreach (var target in neighbors)
-            {
-                var targetEntity = ScoreMap.Get(target).Entity;
-                if (targetEntity?.EntityType == EntityType.Resource)
-                {
-                    var attackAction = new AttackAction(targetEntity.Value.Id, null);
-                    entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
                     break;
                 }
             }
@@ -299,6 +220,7 @@ namespace Aicup2020
             var costSoFar = new Dictionary<Vec2Int, int>();
             var costScore = new Dictionary<Vec2Int, int>();
 
+            cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
             costScore[entity.Position] = 0;
 

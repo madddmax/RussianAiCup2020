@@ -29,6 +29,7 @@ namespace Aicup2020.MyModel
 
         public static List<Entity> Resources = new List<Entity>();
         public static List<Entity> Enemies = new List<Entity>();
+        public static List<Vec2Int> BuilderUnitTargets = new List<Vec2Int>();
 
         public static List<Entity> MyBuilderUnits = new List<Entity>();
         public static List<Entity> MyMeleeUnits = new List<Entity>();
@@ -73,6 +74,7 @@ namespace Aicup2020.MyModel
 
             Resources.Clear();
             Enemies.Clear();
+            BuilderUnitTargets.Clear();
 
             MyBuilderUnits.Clear();
             MyMeleeUnits.Clear();
@@ -215,13 +217,19 @@ namespace Aicup2020.MyModel
                             if (PassableInFuture(target))
                             {
                                 Map[target.X, target.Y].ResourceScore = 1;
+                                BuilderUnitTargets.Add(target);
                             }
                         }
                     }
 
                     // repair
                     if (entity.PlayerId == MyId && 
-                        entity.Health < entityProperties.MaxHealth)
+                        entity.Health < entityProperties.MaxHealth &&
+                        (entity.EntityType == EntityType.BuilderBase ||
+                         entity.EntityType == EntityType.MeleeBase ||
+                         entity.EntityType == EntityType.RangedBase ||
+                         entity.EntityType == EntityType.House ||
+                         entity.EntityType == EntityType.Turret))
                     {
                         var neighbors = entity.Position.Neighbors(entityProperties.Size);
                         foreach (var target in neighbors)
@@ -229,6 +237,7 @@ namespace Aicup2020.MyModel
                             if (PassableInFuture(target))
                             {
                                 Map[target.X, target.Y].RepairScore = entity.Active ? 1 : 2;
+                                BuilderUnitTargets.Add(target);
                             }
                         }
                     }
@@ -254,7 +263,7 @@ namespace Aicup2020.MyModel
                          entity.EntityType == EntityType.Turret))
                     {
                         int size = entity.EntityType != EntityType.MeleeUnit ? 5 : 1;
-                        var range = entity.Position.Range(size);
+                        var range = entity.Position.Range(size + 1);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].DamageScore += 5;
