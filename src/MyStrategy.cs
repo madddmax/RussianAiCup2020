@@ -28,7 +28,6 @@ namespace Aicup2020
 
             // building
             if (ScoreMap.MyActiveRangedBases.Count == 0 &&
-                ScoreMap.Limit >= Params.RangedBaseBuildingLimit &&
                 ScoreMap.MyResource >= ScoreMap.RangedBaseProperties.InitialCost &&
                 ScoreMap.MyNotActiveRangedBases.Count == 0)
             {
