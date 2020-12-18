@@ -8,41 +8,13 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public static Entity? NearestEnemy;
-
         public static bool IsDanger;
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
-            ScoreMap.InitMap(playerView);
-
             var entityActions = new Dictionary<int, EntityAction>();
-
-            var dangerPoints = new List<Entity>(ScoreMap.MyActiveBuilderBases);
-            dangerPoints.AddRange(ScoreMap.MyNotActiveBuilderBases);
-
-            dangerPoints.AddRange(ScoreMap.MyActiveMeleeBases);
-            dangerPoints.AddRange(ScoreMap.MyNotActiveMeleeBases);
-
-            dangerPoints.AddRange(ScoreMap.MyActiveRangedBases);
-            dangerPoints.AddRange(ScoreMap.MyNotActiveRangedBases);
-
-            dangerPoints.AddRange(ScoreMap.MyActiveHouses.TakeLast(5));
-            dangerPoints.AddRange(ScoreMap.MyNotActiveHouses);
-
-            dangerPoints.AddRange(ScoreMap.MyBuilderUnits.TakeLast(5));
-            foreach (var dangerPoint in dangerPoints)
-            {
-                NearestEnemy = ScoreMap.Enemies
-                    .OrderBy(e => e.Position.Distance(dangerPoint.Position))
-                    .FirstOrDefault();
-
-                IsDanger = NearestEnemy.Value.Position.Distance(dangerPoint.Position) <= Params.DangerDistance;
-                if (IsDanger)
-                {
-                    break;
-                }
-            }
+            ScoreMap.InitMap(playerView);
+            IsDanger = DangerCheck();
 
             // repairing
             foreach (Entity entity in playerView.Entities)
@@ -75,7 +47,8 @@ namespace Aicup2020
                   ScoreMap.MyResource >= ScoreMap.HouseProperties.InitialCost)
                 ) &&
                 ScoreMap.Limit + 10 >= ScoreMap.AvailableLimit &&
-                ScoreMap.MyNotActiveHouses.Count <= 1)
+                ScoreMap.MyNotActiveHouses.Count <= 1 &&
+                ScoreMap.MyNotActiveHouses.Count + ScoreMap.MyActiveHouses.Count < Params.MaxHouseCount)
             {
                 BuilderUnitActions.SetBuild(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
                 ScoreMap.MyResource -= ScoreMap.HouseProperties.InitialCost;
@@ -188,6 +161,24 @@ namespace Aicup2020
             return new Action(entityActions);
         }
 
+        private static bool DangerCheck()
+        {
+            bool isDanger = false;
+            foreach (var enemy in ScoreMap.Enemies)
+            {
+                isDanger = ScoreMap.MyProduction.Any(
+                    p => p.Position.Distance(enemy.Position) <= Params.DangerDistance
+                );
+
+                if (isDanger)
+                {
+                    break;
+                }
+            }
+
+            return isDanger;
+        }
+
         private static void SetBuildUnitAction(Entity entity, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
         {
             var neighbors = entity.Position.Neighbors(5);
@@ -249,7 +240,7 @@ namespace Aicup2020
             }
 
             Vec2Int? bestTarget = null;
-            foreach (var target in cameFrom)
+            foreach (var target in costSoFar)
             {
                 var current = target.Key;
                 var scoreCell = ScoreMap.Get(current);
@@ -294,20 +285,15 @@ namespace Aicup2020
             {
                 int approxTargetDistance = int.MaxValue;
 
-                foreach (var target in cameFrom)
+                foreach (var target in costSoFar)
                 {
                     var current = target.Key;
                     var scoreCell = ScoreMap.Get(current);
 
-                    if (moveTarget == null ||
-                        approxTarget.Value.Distance(current) < approxTargetDistance)
+                    if ((moveTarget == null ||
+                        approxTarget.Value.Distance(current) < approxTargetDistance) &&
+                        (entity.EntityType != EntityType.BuilderUnit || scoreCell.DamageScore == 0))
                     {
-                        if (entity.EntityType == EntityType.BuilderUnit &&
-                            scoreCell.DamageScore > 0)
-                        {
-                            continue;
-                        }
-
                         // todo depth
                         moveTarget = GetMoveTarget(current, cameFrom, costSoFar);
                         approxTargetDistance = approxTarget.Value.Distance(current);
@@ -321,13 +307,15 @@ namespace Aicup2020
                 ScoreMap.Set(moveTarget.Value, entity);
             }
 
+            bool breakThrough = false;
             AttackAction? attackAction = null;
             if (addAutoAttack)
             {
+                breakThrough = true;
                 attackAction = new AttackAction(null, new AutoAttack(10, ScoreMap.UnitTargets));
             }
 
-            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
+            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, breakThrough) : (MoveAction?) null;
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, attackAction, null));
         }
 

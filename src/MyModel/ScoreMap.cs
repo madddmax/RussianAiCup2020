@@ -27,8 +27,10 @@ namespace Aicup2020.MyModel
         public static int MyId;
         public static int MyResource;
 
-        public static List<Entity> Resources = new List<Entity>();
+        public static List<Entity> MyProduction = new List<Entity>();
         public static List<Entity> Enemies = new List<Entity>();
+
+        public static List<Entity> Resources = new List<Entity>();
         public static List<Vec2Int> BuilderUnitTargets = new List<Vec2Int>();
 
         public static List<Entity> MyBuilderUnits = new List<Entity>();
@@ -72,8 +74,10 @@ namespace Aicup2020.MyModel
             MyId = playerView.MyId;
             MyResource = playerView.Players[MyId - 1].Resource;
 
-            Resources.Clear();
+            MyProduction.Clear();
             Enemies.Clear();
+
+            Resources.Clear();
             BuilderUnitTargets.Clear();
 
             MyBuilderUnits.Clear();
@@ -119,18 +123,21 @@ namespace Aicup2020.MyModel
                     Map[entity.Position.X, entity.Position.Y].Entity = entity;
                 }
 
+                // my
                 if (entity.PlayerId != MyId &&
                     entity.EntityType != EntityType.Resource)
                 {
                     Enemies.Add(entity);
                 }
 
+                // enemy
                 if (entity.PlayerId == MyId)
                 {
                     // units
                     if (entity.EntityType == EntityType.BuilderUnit)
                     {
                         MyBuilderUnits.Add(entity);
+                        MyProduction.Add(entity);
                     }
 
                     if (entity.EntityType == EntityType.MeleeUnit)
@@ -154,6 +161,8 @@ namespace Aicup2020.MyModel
                         {
                             MyNotActiveBuilderBases.Add(entity);
                         }
+
+                        MyProduction.Add(entity);
                     }
 
                     if (entity.EntityType == EntityType.MeleeBase)
@@ -166,6 +175,8 @@ namespace Aicup2020.MyModel
                         {
                             MyNotActiveMeleeBases.Add(entity);
                         }
+
+                        MyProduction.Add(entity);
                     }
 
                     if (entity.EntityType == EntityType.RangedBase)
@@ -178,6 +189,8 @@ namespace Aicup2020.MyModel
                         {
                             MyNotActiveRangedBases.Add(entity);
                         }
+
+                        MyProduction.Add(entity);
                     }
 
                     if (entity.EntityType == EntityType.House)
@@ -190,6 +203,8 @@ namespace Aicup2020.MyModel
                         {
                             MyNotActiveHouses.Add(entity);
                         }
+
+                        MyProduction.Add(entity);
                     }
                 }
             }
@@ -262,8 +277,11 @@ namespace Aicup2020.MyModel
                          entity.EntityType == EntityType.RangedUnit ||
                          entity.EntityType == EntityType.Turret))
                     {
-                        int size = entity.EntityType != EntityType.MeleeUnit ? 5 : 1;
-                        var range = entity.Position.Range(size + 1);
+                        int size = entity.EntityType != EntityType.MeleeUnit
+                            ? Params.EnemyRangedFearSize
+                            : Params.EnemyMeleeFearSize;
+
+                        var range = entity.Position.Range(size);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].DamageScore += 5;
@@ -300,7 +318,8 @@ namespace Aicup2020.MyModel
 
         public static bool Passable(Vec2Int p)
         {
-            return Map[p.X, p.Y].Entity == null;
+            return Map[p.X, p.Y].Entity == null ||
+                   Map[p.X, p.Y].Entity.Value.EntityType == EntityType.Resource;
         }
 
         public static bool PassableInFuture(Vec2Int p) => PassableInFuture(p.X, p.Y);
