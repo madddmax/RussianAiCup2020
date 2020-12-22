@@ -7,7 +7,7 @@ namespace Aicup2020.MyModel
     public static class ScoreMap
     {
         private static readonly Vec2Int MyBase = new Vec2Int(20, 20);
-        private static readonly Vec2Int EnemyBase = new Vec2Int(79, 79);
+        private static readonly Vec2Int EnemyBase = new Vec2Int(60, 60);
 
         private static readonly ScoreCell[,] Map = new ScoreCell[80, 80];
         public static ScoreCell Get(Vec2Int p) => Map[p.X, p.Y];
@@ -17,7 +17,7 @@ namespace Aicup2020.MyModel
         public static int MyResource;
 
         public static List<Entity> MyProduction = new List<Entity>();
-        public static List<Entity> Enemies = new List<Entity>();
+        public static List<Vec2Int> EnemyTargets = new List<Vec2Int>();
 
         public static List<Entity> Resources = new List<Entity>();
         public static List<Vec2Int> BuilderUnitTargets = new List<Vec2Int>();
@@ -67,7 +67,7 @@ namespace Aicup2020.MyModel
             MyResource = playerView.Players[MyId - 1].Resource;
 
             MyProduction.Clear();
-            Enemies.Clear();
+            EnemyTargets.Clear();
 
             Resources.Clear();
             BuilderUnitTargets.Clear();
@@ -119,7 +119,7 @@ namespace Aicup2020.MyModel
                 if (entity.PlayerId != MyId &&
                     entity.EntityType != EntityType.Resource)
                 {
-                    Enemies.Add(entity);
+                    EnemyTargets.Add(entity.Position);
                 }
 
                 // enemy
@@ -336,24 +336,17 @@ namespace Aicup2020.MyModel
                 }
             }
 
+            if (EnemyTargets.Count == 0)
+            {
+                EnemyTargets.Add(EnemyBase);
+            }
+
             if (BuilderUnitTargets.Count == 0)
             {
                 BuilderUnitTargets.Add(MyBase);
             }
 
-            Resources = Resources
-                .OrderBy(e => e.Position.Distance(MyBase))
-                .ToList();
-
-            Enemies = Enemies
-                .OrderBy(e => e.Position.Distance(MyBase))
-                .ToList();
-
             MyBuilderUnits = MyBuilderUnits
-                .OrderBy(e => e.Position.Distance(MyBase))
-                .ToList();
-
-            MyActiveHouses = MyActiveHouses
                 .OrderBy(e => e.Position.Distance(MyBase))
                 .ToList();
 

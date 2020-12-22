@@ -87,12 +87,12 @@ namespace Aicup2020.MyActions
             Vec2Int? target = null;
             int minDistance = int.MaxValue;
 
-            foreach (var enemy in ScoreMap.Enemies)
+            foreach (var enemyTarget in ScoreMap.EnemyTargets)
             {
-                var distance = enemy.Position.Distance(entity.Position);
+                var distance = enemyTarget.Distance(entity.Position);
                 if (target == null || distance < minDistance)
                 {
-                    target = enemy.Position;
+                    target = enemyTarget;
                     minDistance = distance;
                 }
             }

@@ -169,10 +169,10 @@ namespace Aicup2020
         private static bool DangerCheck()
         {
             bool isDanger = false;
-            foreach (var enemy in ScoreMap.Enemies)
+            foreach (var enemyTarget in ScoreMap.EnemyTargets)
             {
                 isDanger = ScoreMap.MyProduction.Any(
-                    p => p.Position.Distance(enemy.Position) <= Params.DangerDistance
+                    p => p.Position.Distance(enemyTarget) <= Params.DangerDistance
                 );
 
                 if (isDanger)
