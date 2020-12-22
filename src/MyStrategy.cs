@@ -8,6 +8,8 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
+        public static bool IsDebug = true;
+
         public static Color Red = new Color(255, 0, 0, 100);
         public static Color Green = new Color(0, 255, 0, 100);
         public static Color Blue = new Color(0, 0, 255, 100);
@@ -16,7 +18,10 @@ namespace Aicup2020
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
-            debugInterface.Send(new DebugCommand.SetAutoFlush(true));
+            if (IsDebug)
+            {
+                debugInterface.Send(new DebugCommand.SetAutoFlush(true));
+            }
 
             var entityActions = new Dictionary<int, EntityAction>();
             ScoreMap.InitMap(playerView);
@@ -297,16 +302,7 @@ namespace Aicup2020
 
             if (bestTarget != null)
             {
-                // draw
-                var fromPosition = bestTarget.Value;
-                while (costSoFar[fromPosition] != 0)
-                {
-                    DrawLine(fromPosition, cameFrom[fromPosition], Blue, debugInterface);
-                    fromPosition = cameFrom[fromPosition];
-                }
-                //
-
-                moveTarget = GetMoveTarget(entity.Position, bestTarget.Value, cameFrom);
+                moveTarget = GetMoveTarget(entity.Position, bestTarget.Value, cameFrom, Blue, debugInterface);
                 ScoreMap.Set(entity.Position, null);
                 ScoreMap.Set(moveTarget.Value, entity);
             }
@@ -333,16 +329,7 @@ namespace Aicup2020
 
             if (distantTarget != null)
             {
-                // draw
-                var fromPosition = distantTarget.Value;
-                while (costSoFar[fromPosition] != 0)
-                {
-                    DrawLine(fromPosition, cameFrom[fromPosition], Green, debugInterface);
-                    fromPosition = cameFrom[fromPosition];
-                }
-                //
-
-                moveTarget = GetMoveTarget(entity.Position, distantTarget.Value, cameFrom);
+                moveTarget = GetMoveTarget(entity.Position, distantTarget.Value, cameFrom, Green, debugInterface);
                 ScoreMap.Set(entity.Position, null);
                 ScoreMap.Set(moveTarget.Value, entity);
             }
@@ -351,13 +338,18 @@ namespace Aicup2020
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
-        private static Vec2Int GetMoveTarget(Vec2Int current, Vec2Int target, Dictionary<Vec2Int, Vec2Int> cameFrom)
+        private static Vec2Int GetMoveTarget(Vec2Int current, Vec2Int target, Dictionary<Vec2Int, Vec2Int> cameFrom, Color color, DebugInterface debugInterface)
         {
             var fromPosition = target;
 
             while (cameFrom[fromPosition].X != current.X ||
                    cameFrom[fromPosition].Y != current.Y)
             {
+                if (IsDebug)
+                {
+                    DrawLine(fromPosition, cameFrom[fromPosition], color, debugInterface);
+                }
+
                 fromPosition = cameFrom[fromPosition];
             }
 
@@ -372,6 +364,11 @@ namespace Aicup2020
 
         private static void DrawScoreMap(DebugInterface debugInterface)
         {
+            if (!IsDebug)
+            {
+                return;
+            }
+
             for (int x = 0; x < 80; x++)
             {
                 for (int y = 0; y < 80; y++)
