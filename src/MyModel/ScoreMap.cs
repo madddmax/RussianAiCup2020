@@ -285,7 +285,7 @@ namespace Aicup2020.MyModel
                     if (entity.PlayerId != MyId &&
                         entity.EntityType == EntityType.MeleeUnit)
                     {
-                        var range = entity.Position.Range(2);
+                        var range = entity.Position.Range(1);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].MeleeDamage += 5;
@@ -306,7 +306,7 @@ namespace Aicup2020.MyModel
                     if (entity.PlayerId != MyId &&
                         entity.EntityType == EntityType.RangedUnit)
                     {
-                        var range = entity.Position.Range(6);
+                        var range = entity.Position.Range(5);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].RangedDamage += 5;
@@ -344,7 +344,6 @@ namespace Aicup2020.MyModel
         public static bool Passable(Vec2Int p)
         {
             return Map[p.X, p.Y].Entity == null;
-            //Map[p.X, p.Y].Entity.Value.EntityType == EntityType.Resource;
         }
 
         public static bool PassableInFuture(Vec2Int p) => PassableInFuture(p.X, p.Y);

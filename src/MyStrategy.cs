@@ -303,7 +303,7 @@ namespace Aicup2020
                 }
                 //
 
-                moveTarget = GetMoveTarget(bestTarget.Value, cameFrom, costSoFar);
+                moveTarget = GetMoveTarget(entity.Position, bestTarget.Value, cameFrom);
                 ScoreMap.Set(entity.Position, null);
                 ScoreMap.Set(moveTarget.Value, entity);
             }
@@ -339,7 +339,7 @@ namespace Aicup2020
                 }
                 //
 
-                moveTarget = GetMoveTarget(distantTarget.Value, cameFrom, costSoFar);
+                moveTarget = GetMoveTarget(entity.Position, distantTarget.Value, cameFrom);
                 ScoreMap.Set(entity.Position, null);
                 ScoreMap.Set(moveTarget.Value, entity);
             }
@@ -348,11 +348,12 @@ namespace Aicup2020
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
-        private static Vec2Int GetMoveTarget(Vec2Int current, Dictionary<Vec2Int, Vec2Int> cameFrom, Dictionary<Vec2Int, int> costSoFar)
+        private static Vec2Int GetMoveTarget(Vec2Int current, Vec2Int target, Dictionary<Vec2Int, Vec2Int> cameFrom)
         {
-            var fromPosition = current;
+            var fromPosition = target;
 
-            while (costSoFar[fromPosition] > 1)
+            while (cameFrom[fromPosition].X != current.X ||
+                   cameFrom[fromPosition].Y != current.Y)
             {
                 fromPosition = cameFrom[fromPosition];
             }
@@ -375,37 +376,43 @@ namespace Aicup2020
                     var scoreCell = ScoreMap.Get(x, y);
                     if (scoreCell.ResourceScore > 0)
                     {
-                        DrawSymbol(x, y, "'", Green, debugInterface);
+                        DrawRegion(x, y, Green, debugInterface);
                     }
 
                     if (scoreCell.RepairScore > 0)
                     {
-                        DrawSymbol(x, y, "'", Blue, debugInterface);
+                        DrawRegion(x, y, Green, debugInterface);
                     }
 
                     if (scoreCell.MeleeDamage > 0)
                     {
-                        DrawSymbol(x, y, "*", Green, debugInterface);
+                        DrawRegion(x, y, Red, debugInterface);
                     }
 
                     if (scoreCell.TurretDamage > 0)
                     {
-                        DrawSymbol(x, y, "*", Blue, debugInterface);
+                        DrawRegion(x, y, Red, debugInterface);
                     }
 
                     if (scoreCell.RangedDamage > 0)
                     {
-                        DrawSymbol(x, y, "*", Red, debugInterface);
+                        DrawRegion(x, y, Blue, debugInterface);
                     }
                 }
             }
         }
 
-        public static void DrawSymbol(int x, int y, string symbol, Color color, DebugInterface debugInterface)
+        public static void DrawRegion(int x, int y, Color color, DebugInterface debugInterface)
         {
-            var vertex = new ColoredVertex(new Vec2Float(x, y), new Vec2Float(0, 0), color);
-            var debugCommand2 = new DebugCommand.Add(new DebugData.PlacedText(vertex, symbol, 0, 15));
-            debugInterface.Send(debugCommand2);
+            var vertex1 = new ColoredVertex(new Vec2Float(x + 0.25f, y + 0.25f), new Vec2Float(0, 0), color);
+            var vertex2 = new ColoredVertex(new Vec2Float(x + 0.75f, y + 0.25f), new Vec2Float(0, 0), color);
+            var vertex3 = new ColoredVertex(new Vec2Float(x + 0.75f, y + 0.75f), new Vec2Float(0, 0), color);
+            var vertex4 = new ColoredVertex(new Vec2Float(x + 0.25f, y + 0.75f), new Vec2Float(0, 0), color);
+
+            var debugData = new DebugData.Primitives(new[] { vertex1, vertex2, vertex3, vertex4 }, PrimitiveType.Lines);
+            var debugCommand = new DebugCommand.Add(debugData);
+
+            debugInterface.Send(debugCommand);
         }
 
         public static void DrawLine(Vec2Int p1, Vec2Int p2, Color color, DebugInterface debugInterface)
