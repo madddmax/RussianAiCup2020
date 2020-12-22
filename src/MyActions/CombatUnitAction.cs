@@ -14,6 +14,12 @@ namespace Aicup2020.MyActions
                 return;
             }
 
+            if (entity.EntityType == EntityType.RangedUnit &&
+                ScoreMap.Get(entity.Position).MeleeDamage > 0)
+            {
+                return;
+            }
+
             List<Vec2Int> range = new List<Vec2Int>();
             if (size > 1)
             {
@@ -55,6 +61,22 @@ namespace Aicup2020.MyActions
             SetAttack(entity, EntityType.House, enemiesUnderAttack, entityActions);
         }
 
+        private static void SetAttack(Entity entity, EntityType attackedEntityType, List<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return;
+            }
+
+            bool hasEnemy = enemiesUnderAttack.Any(e => e.EntityType == attackedEntityType);
+            if (hasEnemy)
+            {
+                var enemy = enemiesUnderAttack.First(e => e.EntityType == attackedEntityType);
+                var attackAction = new AttackAction(enemy.Id, null);
+                entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
+            }
+        }
+
         public static Vec2Int? GetAttackTarget(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
@@ -76,22 +98,6 @@ namespace Aicup2020.MyActions
             }
 
             return target;
-        }
-
-        private static void SetAttack(Entity entity, EntityType attackedEntityType, List<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
-        {
-            if (entityActions.ContainsKey(entity.Id))
-            {
-                return;
-            }
-
-            bool hasEnemy = enemiesUnderAttack.Any(e => e.EntityType == attackedEntityType);
-            if (hasEnemy)
-            {
-                var enemy = enemiesUnderAttack.First(e => e.EntityType == attackedEntityType);
-                var attackAction = new AttackAction(enemy.Id, null);
-                entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
-            }
         }
     }
 }

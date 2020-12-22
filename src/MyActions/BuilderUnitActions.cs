@@ -33,7 +33,7 @@ namespace Aicup2020.MyActions
                 return;
             }
 
-            if (ScoreMap.Get(entity.Position).RangedDamage > 0)
+            if (ScoreMap.Get(entity.Position).AllDamage > 0)
             {
                 return;
             }
@@ -72,7 +72,7 @@ namespace Aicup2020.MyActions
                     continue;
                 }
 
-                if (ScoreMap.Get(entity.Position).RangedDamage > 0)
+                if (ScoreMap.Get(entity.Position).AllDamage > 0)
                 {
                     continue;
                 }
@@ -85,8 +85,8 @@ namespace Aicup2020.MyActions
 
                     if (ScoreMap.Passable(position, size) &&
                         diagonals.All(ScoreMap.PassableInFuture) &&
-                        diagonals.All(d => ScoreMap.Get(d).RangedDamage == 0) &&
-                        neighbors.All(d => ScoreMap.Get(d).RangedDamage == 0) &&
+                        diagonals.All(d => ScoreMap.Get(d).AllDamage == 0) &&
+                        neighbors.All(d => ScoreMap.Get(d).AllDamage == 0) &&
                         (size > 3 || neighbors.All(ScoreMap.PassableInFuture)))
                     {
                         var buildAction = new BuildAction(buildEntityType, position);
@@ -106,7 +106,7 @@ namespace Aicup2020.MyActions
                 return;
             }
 
-            if (ScoreMap.Get(entity.Position).RangedDamage > 0)
+            if (ScoreMap.Get(entity.Position).AllDamage > 0)
             {
                 return;
             }

@@ -143,6 +143,30 @@ namespace Aicup2020.MyModel
             return radius;
         }
 
+        public static List<Vec2Int> Range(this Vec2Int p, int size, int minSize)
+        {
+            var radius = new List<Vec2Int>();
+
+            for (int x = p.X - size; x <= p.X + size; x++)
+            {
+                for (int y = p.Y - size; y <= p.Y + size; y++)
+                {
+                    if (!InBounds(x, y))
+                    {
+                        continue;
+                    }
+
+                    int distance = p.Distance(x, y);
+                    if (distance > minSize && distance <= size)
+                    {
+                        radius.Add(new Vec2Int(x, y));
+                    }
+                }
+            }
+
+            return radius;
+        }
+
         private static bool InBounds(Vec2Int p) => p.X >= 0 && p.Y >= 0 && p.X < 80 && p.Y < 80;
 
         private static bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < 80 && y < 80;

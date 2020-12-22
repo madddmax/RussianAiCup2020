@@ -238,12 +238,15 @@ namespace Aicup2020
                     break;
                 }
 
-                if ((
-                        entity.EntityType == EntityType.MeleeUnit ||
-                        entity.EntityType == EntityType.RangedUnit
-                    ) &&
-                    currentCell.AttackScore > 0
-                )
+                if (entity.EntityType == EntityType.MeleeUnit &&
+                    currentCell.MeleeAttack > 0)
+                {
+                    bestTarget = current;
+                    break;
+                }
+
+                if (entity.EntityType == EntityType.RangedUnit &&
+                    currentCell.RangedAttack > 0)
                 {
                     bestTarget = current;
                     break;
@@ -263,7 +266,7 @@ namespace Aicup2020
                     int nextCost = costSoFar[current] + 1;
                     if (entity.EntityType == EntityType.BuilderUnit)
                     {
-                        nextCost += nextCell.MeleeDamage + nextCell.TurretDamage + nextCell.RangedDamage;
+                        nextCost += nextCell.AllDamage;
                     }
 
                     if (entity.EntityType == EntityType.RangedUnit)
@@ -383,6 +386,16 @@ namespace Aicup2020
                     {
                         DrawRegion(x, y, Green, debugInterface);
                     }
+
+                    //if (scoreCell.MeleeAttack > 0)
+                    //{
+                    //    DrawRegion(x, y, Blue, debugInterface);
+                    //}
+
+                    //if (scoreCell.RangedAttack > 0)
+                    //{
+                    //    DrawRegion(x, y, Blue, debugInterface);
+                    //}
 
                     if (scoreCell.MeleeDamage > 0)
                     {

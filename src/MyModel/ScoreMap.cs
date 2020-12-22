@@ -6,7 +6,8 @@ namespace Aicup2020.MyModel
 {
     public static class ScoreMap
     {
-        private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
+        private static readonly Vec2Int MyBase = new Vec2Int(20, 20);
+        private static readonly Vec2Int EnemyBase = new Vec2Int(79, 79);
 
         private static readonly ScoreCell[,] Map = new ScoreCell[80, 80];
         public static ScoreCell Get(Vec2Int p) => Map[p.X, p.Y];
@@ -265,6 +266,7 @@ namespace Aicup2020.MyModel
                     {
                         Map[entity.Position.X, entity.Position.Y].ResourceScore = 0;
                         Map[entity.Position.X, entity.Position.Y].RepairScore = 0;
+                        BuilderUnitTargets.Remove(entity.Position);
                     }
 
                     // attack
@@ -276,7 +278,17 @@ namespace Aicup2020.MyModel
                         {
                             if (PassableInFuture(target))
                             {
-                                Map[target.X, target.Y].AttackScore = 1;
+                                Map[target.X, target.Y].MeleeAttack = 1;
+                            }
+                        }
+
+                        var position = new Vec2Int(x, y);
+                        var range = position.Range(4, 3);
+                        foreach (var target in range)
+                        {
+                            if (PassableInFuture(target))
+                            {
+                                Map[target.X, target.Y].RangedAttack = 1;
                             }
                         }
                     }
@@ -285,10 +297,13 @@ namespace Aicup2020.MyModel
                     if (entity.PlayerId != MyId &&
                         entity.EntityType == EntityType.MeleeUnit)
                     {
-                        var range = entity.Position.Range(1);
+                        var range = entity.Position.Range(2);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].MeleeDamage += 5;
+                            Map[point.X, point.Y].ResourceScore = 0;
+                            Map[point.X, point.Y].RepairScore = 0;
+                            BuilderUnitTargets.Remove(point);
                         }
                     }
 
@@ -300,19 +315,30 @@ namespace Aicup2020.MyModel
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].TurretDamage += 5;
+                            Map[point.X, point.Y].ResourceScore = 0;
+                            Map[point.X, point.Y].RepairScore = 0;
+                            BuilderUnitTargets.Remove(point);
                         }
                     }
 
                     if (entity.PlayerId != MyId &&
                         entity.EntityType == EntityType.RangedUnit)
                     {
-                        var range = entity.Position.Range(5);
+                        var range = entity.Position.Range(6);
                         foreach (var point in range)
                         {
                             Map[point.X, point.Y].RangedDamage += 5;
+                            Map[point.X, point.Y].ResourceScore = 0;
+                            Map[point.X, point.Y].RepairScore = 0;
+                            BuilderUnitTargets.Remove(point);
                         }
                     }
                 }
+            }
+
+            if (BuilderUnitTargets.Count == 0)
+            {
+                BuilderUnitTargets.Add(MyBase);
             }
 
             Resources = Resources
