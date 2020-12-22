@@ -6,8 +6,8 @@ namespace Aicup2020.MyModel
 {
     public static class ScoreMap
     {
-        private static readonly Vec2Int MyBase = new Vec2Int(20, 20);
-        private static readonly Vec2Int EnemyBase = new Vec2Int(60, 60);
+        public static readonly Vec2Int MyBase = new Vec2Int(20, 20);
+        public static readonly Vec2Int EnemyBase = new Vec2Int(60, 60);
 
         private static readonly ScoreCell[,] Map = new ScoreCell[80, 80];
         public static ScoreCell Get(Vec2Int p) => Map[p.X, p.Y];
@@ -334,16 +334,6 @@ namespace Aicup2020.MyModel
                         }
                     }
                 }
-            }
-
-            if (EnemyTargets.Count == 0)
-            {
-                EnemyTargets.Add(EnemyBase);
-            }
-
-            if (BuilderUnitTargets.Count == 0)
-            {
-                BuilderUnitTargets.Add(MyBase);
             }
 
             MyBuilderUnits = MyBuilderUnits

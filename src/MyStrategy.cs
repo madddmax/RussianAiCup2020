@@ -8,8 +8,6 @@ namespace Aicup2020
 {
     public class MyStrategy
     {
-        public static bool IsDebug = true;
-
         public static Color Red = new Color(255, 0, 0, 100);
         public static Color Green = new Color(0, 255, 0, 100);
         public static Color Blue = new Color(0, 0, 255, 100);
@@ -18,7 +16,7 @@ namespace Aicup2020
 
         public Action GetAction(PlayerView playerView, DebugInterface debugInterface)
         {
-            if (IsDebug)
+            if (Params.IsDebug)
             {
                 debugInterface.Send(new DebugCommand.SetAutoFlush(true));
             }
@@ -77,8 +75,7 @@ namespace Aicup2020
                     case EntityType.BuilderUnit:
                     {
                         BuilderUnitActions.SetAttack(entity, entityActions);
-
-                        var approxTarget = BuilderUnitActions.GetApproxTarget(entity);
+                        var approxTarget = BuilderUnitActions.GetApproxTarget(entity, entityActions);
                         SetMoveAction(entity, approxTarget, entityActions, debugInterface);
                         continue;
                     }
@@ -206,7 +203,7 @@ namespace Aicup2020
             }
         }
 
-        private static void SetMoveAction(Entity entity, Vec2Int? approxTarget, Dictionary<int, EntityAction> entityActions, DebugInterface debugInterface)
+        private static void SetMoveAction(Entity entity, Vec2Int approxTarget, Dictionary<int, EntityAction> entityActions, DebugInterface debugInterface)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
@@ -217,6 +214,8 @@ namespace Aicup2020
 
             // AStarSearch
             Vec2Int? bestTarget = null;
+            Vec2Int distantTarget = approxTarget;
+            int minDistanceCost = int.MaxValue;
 
             var frontier = new PriorityQueue<Vec2Int>();
             frontier.Enqueue(entity.Position, 0);
@@ -257,6 +256,13 @@ namespace Aicup2020
                     break;
                 }
 
+                var distanceCost = approxTarget.Distance(current);
+                if (distanceCost < minDistanceCost)
+                {
+                    distantTarget = current;
+                    minDistanceCost = distanceCost;
+                }
+
                 var neighbors = current.Neighbors();
                 foreach (Vec2Int next in neighbors)
                 {
@@ -284,7 +290,8 @@ namespace Aicup2020
                         nextCost += nextCell.TurretDamage;
                     }
 
-                    if (nextCell.Entity?.EntityType == EntityType.Resource)
+                    if (entity.EntityType != EntityType.BuilderUnit &&
+                        nextCell.Entity?.EntityType == EntityType.Resource)
                     {
                         nextCost += 2;
                     }
@@ -300,41 +307,14 @@ namespace Aicup2020
                 }
             }
 
-            if (bestTarget != null)
-            {
-                moveTarget = GetMoveTarget(entity.Position, bestTarget.Value, cameFrom, Blue, debugInterface);
-                ScoreMap.Set(entity.Position, null);
-                ScoreMap.Set(moveTarget.Value, entity);
-            }
+            moveTarget = bestTarget != null 
+                ? GetMoveTarget(entity.Position, bestTarget.Value, cameFrom, Blue, debugInterface) 
+                : GetMoveTarget(entity.Position, distantTarget, cameFrom, Green, debugInterface);
 
+            ScoreMap.Set(entity.Position, null);
+            ScoreMap.Set(moveTarget.Value, entity);
 
-            Vec2Int? distantTarget = null;
-            if (moveTarget == null && approxTarget != null)
-            {
-                int minDistanceCost = int.MaxValue;
-
-                foreach (var cost in costSoFar)
-                {
-                    var current = cost.Key;
-                    var distanceCost = approxTarget.Value.Distance(current);
-
-                    if (distantTarget == null ||
-                        distanceCost < minDistanceCost)
-                    {
-                        distantTarget = current;
-                        minDistanceCost = distanceCost;
-                    }
-                }
-            }
-
-            if (distantTarget != null)
-            {
-                moveTarget = GetMoveTarget(entity.Position, distantTarget.Value, cameFrom, Green, debugInterface);
-                ScoreMap.Set(entity.Position, null);
-                ScoreMap.Set(moveTarget.Value, entity);
-            }
-
-            var moveAction = moveTarget != null ? new MoveAction(moveTarget.Value, false, false) : (MoveAction?) null;
+            var moveAction = new MoveAction(moveTarget.Value, false, false);
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 
@@ -345,7 +325,7 @@ namespace Aicup2020
             while (cameFrom[fromPosition].X != current.X ||
                    cameFrom[fromPosition].Y != current.Y)
             {
-                if (IsDebug)
+                if (Params.IsDebug)
                 {
                     DrawLine(fromPosition, cameFrom[fromPosition], color, debugInterface);
                 }
@@ -364,7 +344,7 @@ namespace Aicup2020
 
         private static void DrawScoreMap(DebugInterface debugInterface)
         {
-            if (!IsDebug)
+            if (!Params.IsDebug)
             {
                 return;
             }

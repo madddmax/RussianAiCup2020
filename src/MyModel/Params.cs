@@ -2,6 +2,10 @@
 {
     public static class Params
     {
+        public static bool IsDebug = false;
+
+        public const int MaxSearchMove = 180;
+
         public const int RangedBaseBuildingLimit = 15;
 
         public const int MaxBuilderUnitsCount = 50;
@@ -17,7 +21,5 @@
         public const int MaxHouseCount = 18;
 
         public const int DangerDistance = 20;
-
-        public const int MaxSearchMove = 200;
     }
 }

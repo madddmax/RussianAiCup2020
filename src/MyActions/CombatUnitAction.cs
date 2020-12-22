@@ -77,11 +77,11 @@ namespace Aicup2020.MyActions
             }
         }
 
-        public static Vec2Int? GetAttackTarget(Entity entity, Dictionary<int, EntityAction> entityActions)
+        public static Vec2Int GetAttackTarget(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
-                return null;
+                return ScoreMap.EnemyBase;
             }
 
             Vec2Int? target = null;
@@ -97,7 +97,7 @@ namespace Aicup2020.MyActions
                 }
             }
 
-            return target;
+            return target ?? ScoreMap.EnemyBase;
         }
     }
 }

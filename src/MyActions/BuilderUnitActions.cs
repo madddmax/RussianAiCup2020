@@ -7,8 +7,13 @@ namespace Aicup2020.MyActions
 {
     public static class BuilderUnitActions
     {
-        public static Vec2Int? GetApproxTarget(Entity entity)
+        public static Vec2Int GetApproxTarget(Entity entity, Dictionary<int, EntityAction> entityActions)
         {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return ScoreMap.MyBase;
+            }
+
             Vec2Int? nearestTarget = null;
             int minDistance = int.MaxValue;
 
@@ -23,7 +28,7 @@ namespace Aicup2020.MyActions
                 }
             }
 
-            return nearestTarget;
+            return nearestTarget ?? ScoreMap.MyBase;
         }
 
         public static void SetRepair(PlayerView playerView, Entity entity, Dictionary<int, EntityAction> entityActions)
