@@ -8,21 +8,9 @@ namespace Aicup2020.MyModel
     {
         private static readonly Vec2Int MyBase = new Vec2Int(0, 0);
 
-        public static readonly EntityType[] UnitTargets =
-        {
-            EntityType.MeleeUnit,
-            EntityType.RangedUnit,
-            EntityType.BuilderUnit,
-            EntityType.Turret,
-            EntityType.House,
-            EntityType.BuilderBase,
-            EntityType.MeleeBase,
-            EntityType.RangedBase,
-            EntityType.Wall
-        };
-
         private static readonly ScoreCell[,] Map = new ScoreCell[80, 80];
         public static ScoreCell Get(Vec2Int p) => Map[p.X, p.Y];
+        public static ScoreCell Get(int x, int y) => Map[x, y];
 
         public static int MyId;
         public static int MyResource;
@@ -67,7 +55,10 @@ namespace Aicup2020.MyModel
             {
                 for (int x = 0; x < 80; x++)
                 {
-                    Map[x, y] = new ScoreCell();
+                    Map[x, y] = new ScoreCell
+                    {
+                        ScoutScore = 1
+                    };
                 }
             }
 
@@ -221,6 +212,17 @@ namespace Aicup2020.MyModel
                     Entity entity = Map[x, y].Entity.Value;
                     EntityProperties entityProperties = playerView.EntityProperties[entity.EntityType];
 
+                    // scout
+                    if (entity.PlayerId != MyId &&
+                        entity.EntityType != EntityType.Resource)
+                    {
+                        var neighbors = entity.Position.Neighbors(entityProperties.SightRange);
+                        foreach (var target in neighbors)
+                        {
+                            Map[target.X, target.Y].ScoutScore = 0;
+                        }
+                    }
+
                     // collect resources
                     if (entity.EntityType == EntityType.Resource)
                     {
@@ -257,6 +259,14 @@ namespace Aicup2020.MyModel
                         }
                     }
 
+                    // check builders
+                    if (entity.PlayerId == MyId &&
+                        entity.EntityType == EntityType.BuilderUnit)
+                    {
+                        Map[entity.Position.X, entity.Position.Y].ResourceScore = 0;
+                        Map[entity.Position.X, entity.Position.Y].RepairScore = 0;
+                    }
+
                     // attack
                     if (entity.PlayerId != MyId &&
                         entity.EntityType != EntityType.Resource)
@@ -273,18 +283,33 @@ namespace Aicup2020.MyModel
 
                     // check damage
                     if (entity.PlayerId != MyId &&
-                        (entity.EntityType == EntityType.MeleeUnit ||
-                         entity.EntityType == EntityType.RangedUnit ||
-                         entity.EntityType == EntityType.Turret))
+                        entity.EntityType == EntityType.MeleeUnit)
                     {
-                        int size = entity.EntityType != EntityType.MeleeUnit
-                            ? Params.EnemyRangedFearSize
-                            : Params.EnemyMeleeFearSize;
-
-                        var range = entity.Position.Range(size);
+                        var range = entity.Position.Range(2);
                         foreach (var point in range)
                         {
-                            Map[point.X, point.Y].DamageScore += 5;
+                            Map[point.X, point.Y].MeleeDamage += 5;
+                        }
+                    }
+
+                    if (entity.PlayerId != MyId &&
+                        entity.EntityType == EntityType.Turret)
+                    {
+                        var position = new Vec2Int(x, y);
+                        var range = position.Range(5);
+                        foreach (var point in range)
+                        {
+                            Map[point.X, point.Y].TurretDamage += 5;
+                        }
+                    }
+
+                    if (entity.PlayerId != MyId &&
+                        entity.EntityType == EntityType.RangedUnit)
+                    {
+                        var range = entity.Position.Range(6);
+                        foreach (var point in range)
+                        {
+                            Map[point.X, point.Y].RangedDamage += 5;
                         }
                     }
                 }

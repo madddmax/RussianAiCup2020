@@ -7,29 +7,41 @@ namespace Aicup2020.MyActions
 {
     public static class CombatUnitAction
     {
-        public static Vec2Int? SetAttack(Entity entity, int range, Dictionary<int, EntityAction> entityActions)
+        public static void SetAttack(Entity entity, int attackRange, int size, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
-                return null;
+                return;
             }
 
-            Vec2Int? target = null;
-            int minDistance = int.MaxValue;
-
-            var enemiesUnderAttack = new List<Entity>();
-            foreach (var enemy in ScoreMap.Enemies)
+            List<Vec2Int> range = new List<Vec2Int>();
+            if (size > 1)
             {
-                var distance = enemy.Position.Distance(entity.Position);
-                if (distance <= range)
+                for (int y = entity.Position.Y; y < entity.Position.Y + size; y++)
                 {
-                    enemiesUnderAttack.Add(enemy);
+                    for (int x = entity.Position.X; x < entity.Position.X + size; x++)
+                    {
+                        var position = new Vec2Int(x, y);
+                        range.AddRange(position.Range(attackRange));
+                    }
                 }
 
-                if (target == null || distance < minDistance)
+                range = range.Distinct().ToList();
+            }
+            else
+            {
+                range = entity.Position.Range(attackRange);
+            }
+
+            var enemiesUnderAttack = new List<Entity>();
+            foreach (var position in range)
+            {
+                var cell = ScoreMap.Get(position);
+                if (cell.Entity != null &&
+                    cell.Entity?.EntityType != EntityType.Resource &&
+                    cell.Entity?.PlayerId != ScoreMap.MyId)
                 {
-                    target = enemy.Position;
-                    minDistance = distance;
+                    enemiesUnderAttack.Add(cell.Entity.Value);
                 }
             }
 
@@ -41,6 +53,27 @@ namespace Aicup2020.MyActions
             SetAttack(entity, EntityType.MeleeBase, enemiesUnderAttack, entityActions);
             SetAttack(entity, EntityType.BuilderBase, enemiesUnderAttack, entityActions);
             SetAttack(entity, EntityType.House, enemiesUnderAttack, entityActions);
+        }
+
+        public static Vec2Int? GetAttackTarget(Entity entity, Dictionary<int, EntityAction> entityActions)
+        {
+            if (entityActions.ContainsKey(entity.Id))
+            {
+                return null;
+            }
+
+            Vec2Int? target = null;
+            int minDistance = int.MaxValue;
+
+            foreach (var enemy in ScoreMap.Enemies)
+            {
+                var distance = enemy.Position.Distance(entity.Position);
+                if (target == null || distance < minDistance)
+                {
+                    target = enemy.Position;
+                    minDistance = distance;
+                }
+            }
 
             return target;
         }

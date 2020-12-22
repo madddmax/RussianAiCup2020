@@ -12,7 +12,11 @@ namespace Aicup2020.MyModel
 
         public int AttackScore;
 
-        public int DamageScore;
+        public int MeleeDamage;
+
+        public int TurretDamage;
+
+        public int RangedDamage;
 
         public int ScoutScore;
 

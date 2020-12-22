@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using Aicup2020.Model;
 
 namespace Aicup2020.MyModel
@@ -47,7 +46,10 @@ namespace Aicup2020.MyModel
             {
                 for (int i = 0; i < size; i++)
                 {
-                    neighbors.Add(new Vec2Int(p.X + i, p.Y - 1));
+                    if (p.X + i < 80)
+                    {
+                        neighbors.Add(new Vec2Int(p.X + i, p.Y - 1));
+                    }
                 }
             }
 
@@ -56,7 +58,10 @@ namespace Aicup2020.MyModel
             {
                 for (int i = 0; i < size; i++)
                 {
-                    neighbors.Add(new Vec2Int(p.X - 1, p.Y + i));
+                    if (p.Y + i < 80)
+                    {
+                        neighbors.Add(new Vec2Int(p.X - 1, p.Y + i));
+                    }
                 }
             }
 
@@ -65,7 +70,10 @@ namespace Aicup2020.MyModel
             {
                 for (int i = 0; i < size; i++)
                 {
-                    neighbors.Add(new Vec2Int(p.X + i, p.Y + size));
+                    if (p.X + i < 80)
+                    {
+                        neighbors.Add(new Vec2Int(p.X + i, p.Y + size));
+                    }
                 }
             }
 
@@ -74,7 +82,10 @@ namespace Aicup2020.MyModel
             {
                 for (int i = 0; i < size; i++)
                 {
-                    neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
+                    if (p.Y + i < 80)
+                    {
+                        neighbors.Add(new Vec2Int(p.X + size, p.Y + i));
+                    }
                 }
             }
 

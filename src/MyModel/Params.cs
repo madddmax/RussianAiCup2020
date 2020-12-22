@@ -10,14 +10,14 @@
 
         public const int MaxRangedUnitsCount = 50;
 
+        public const int MaxAttackRangedUnitsCount = 30;
+
+        public const int MaxDefenceRangedUnitsCount = 30;
+
         public const int MaxHouseCount = 18;
 
         public const int DangerDistance = 20;
 
-        public const int MaxSearchMove = 180;
-
-        public const int EnemyRangedFearSize = 10;
-
-        public const int EnemyMeleeFearSize = 3;
+        public const int MaxSearchMove = 200;
     }
 }
