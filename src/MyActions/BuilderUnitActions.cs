@@ -91,8 +91,7 @@ namespace Aicup2020.MyActions
                     if (ScoreMap.Passable(position, size) &&
                         diagonals.All(ScoreMap.PassableInFuture) &&
                         diagonals.All(d => ScoreMap.Get(d).AllDamage == 0) &&
-                        neighbors.All(d => ScoreMap.Get(d).AllDamage == 0) &&
-                        (size > 3 || neighbors.All(ScoreMap.PassableInFuture)))
+                        neighbors.All(d => ScoreMap.Get(d).AllDamage == 0))
                     {
                         var buildAction = new BuildAction(buildEntityType, position);
                         entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
