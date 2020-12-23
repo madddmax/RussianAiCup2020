@@ -21,6 +21,12 @@ namespace Aicup2020
                 debugInterface.Send(new DebugCommand.SetAutoFlush(true));
             }
 
+            if (playerView.CurrentTick == 10 && playerView.Players.Length == 2)
+            {
+                Params.MaxBuilderUnitsCount += 20;
+                Params.MaxHouseCount += 4;
+            }
+
             var entityActions = new Dictionary<int, EntityAction>();
             ScoreMap.InitMap(playerView);
             DrawScoreMap(debugInterface);

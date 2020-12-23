@@ -8,7 +8,7 @@
 
         public const int RangedBaseBuildingLimit = 15;
 
-        public const int MaxBuilderUnitsCount = 50;
+        public static int MaxBuilderUnitsCount = 50;
 
         public const int MaxMeleeUnitsCount = 0;
 
@@ -18,7 +18,7 @@
 
         public const int MaxDefenceRangedUnitsCount = 30;
 
-        public const int MaxHouseCount = 18;
+        public static int MaxHouseCount = 18;
 
         public const int DangerDistance = 20;
     }
