@@ -11,6 +11,7 @@ namespace Aicup2020
         public static Color Red = new Color(255, 0, 0, 100);
         public static Color Green = new Color(0, 255, 0, 100);
         public static Color Blue = new Color(0, 0, 255, 100);
+        public static Color Lemon = new Color(247, 202, 24, 100);
 
         public static bool IsDanger;
 
@@ -42,15 +43,26 @@ namespace Aicup2020
                 }
             }
 
-            // building
+            // building turret
+            if (ScoreMap.MyActiveRangedBases.Count > 0 &&
+                ScoreMap.Limit >= Params.TurretBuildingLimit &&
+                ScoreMap.MyResource >= ScoreMap.TurretProperties.InitialCost &&
+                ScoreMap.MyNotActiveTurrets.Count <= 1)
+            {
+                BuilderUnitActions.SetBuild(EntityType.Turret, ScoreMap.TurretProperties.Size, entityActions, debugInterface);
+                ScoreMap.MyResource -= ScoreMap.TurretProperties.InitialCost;
+            }
+
+            // building ranged base
             if (ScoreMap.MyActiveRangedBases.Count == 0 &&
                 ScoreMap.MyResource >= ScoreMap.RangedBaseProperties.InitialCost &&
                 ScoreMap.MyNotActiveRangedBases.Count == 0)
             {
-                BuilderUnitActions.SetBuild(EntityType.RangedBase, ScoreMap.RangedBaseProperties.Size, entityActions);
+                BuilderUnitActions.SetBuild(EntityType.RangedBase, ScoreMap.RangedBaseProperties.Size, entityActions, debugInterface);
                 ScoreMap.MyResource -= ScoreMap.RangedBaseProperties.InitialCost;
             }
 
+            // building house
             if (((ScoreMap.MyActiveRangedBases.Count == 0 &&
                   ScoreMap.Limit >= Params.RangedBaseBuildingLimit &&
                   ScoreMap.MyResource >=
@@ -65,7 +77,7 @@ namespace Aicup2020
                 ScoreMap.MyNotActiveHouses.Count <= 1 &&
                 ScoreMap.MyNotActiveHouses.Count + ScoreMap.MyActiveHouses.Count < Params.MaxHouseCount)
             {
-                BuilderUnitActions.SetBuild(EntityType.House, ScoreMap.HouseProperties.Size, entityActions);
+                BuilderUnitActions.SetBuild(EntityType.House, ScoreMap.HouseProperties.Size, entityActions, debugInterface);
                 ScoreMap.MyResource -= ScoreMap.HouseProperties.InitialCost;
             }
 

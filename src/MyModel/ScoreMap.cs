@@ -37,6 +37,9 @@ namespace Aicup2020.MyModel
         public static List<Entity> MyActiveHouses = new List<Entity>();
         public static List<Entity> MyNotActiveHouses = new List<Entity>();
 
+        public static List<Entity> MyActiveTurrets = new List<Entity>();
+        public static List<Entity> MyNotActiveTurrets = new List<Entity>();
+
         public static int Limit;
         public static int AvailableLimit;
 
@@ -48,6 +51,7 @@ namespace Aicup2020.MyModel
         public static EntityProperties MeleeBaseProperties;
         public static EntityProperties RangedBaseProperties;
         public static EntityProperties HouseProperties;
+        public static EntityProperties TurretProperties;
 
         static ScoreMap()
         {
@@ -102,6 +106,9 @@ namespace Aicup2020.MyModel
             MyActiveHouses.Clear();
             MyNotActiveHouses.Clear();
 
+            MyActiveTurrets.Clear();
+            MyNotActiveTurrets.Clear();
+
             BuilderUnitProperties = playerView.EntityProperties[EntityType.BuilderUnit];
             MeleeUnitProperties = playerView.EntityProperties[EntityType.MeleeUnit];
             RangedUnitProperties = playerView.EntityProperties[EntityType.RangedUnit];
@@ -110,6 +117,7 @@ namespace Aicup2020.MyModel
             MeleeBaseProperties = playerView.EntityProperties[EntityType.MeleeBase];
             RangedBaseProperties = playerView.EntityProperties[EntityType.RangedBase];
             HouseProperties = playerView.EntityProperties[EntityType.House];
+            TurretProperties = playerView.EntityProperties[EntityType.Turret];
 
             foreach (Entity entity in playerView.Entities)
             {
@@ -249,6 +257,18 @@ namespace Aicup2020.MyModel
                         MyProduction.Add(entity);
                     }
 
+                    if (entity.EntityType == EntityType.Turret)
+                    {
+                        if (entity.Active)
+                        {
+                            MyActiveTurrets.Add(entity);
+                        }
+                        else
+                        {
+                            MyNotActiveTurrets.Add(entity);
+                        }
+                    }
+
                     // repair
                     if (entity.Health < properties.MaxHealth &&
                         (entity.EntityType == EntityType.BuilderBase ||
@@ -302,7 +322,8 @@ namespace Aicup2020.MyModel
                     }
 
                     if (entity.PlayerId != MyId &&
-                        entity.EntityType == EntityType.Turret)
+                        entity.EntityType == EntityType.Turret &&
+                        entity.Active)
                     {
                         var position = new Vec2Int(x, y);
                         var range = position.Range(5);

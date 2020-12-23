@@ -8,6 +8,8 @@
 
         public const int RangedBaseBuildingLimit = 15;
 
+        public const int TurretBuildingLimit = 45;
+
         public static int MaxBuilderUnitsCount = 50;
 
         public const int MaxMeleeUnitsCount = 0;

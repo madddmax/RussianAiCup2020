@@ -68,7 +68,7 @@ namespace Aicup2020.MyActions
             }
         }
 
-        public static void SetBuild(EntityType buildEntityType, int size, Dictionary<int, EntityAction> entityActions)
+        public static void SetBuild(EntityType buildEntityType, int size, Dictionary<int, EntityAction> entityActions, DebugInterface debugInterface)
         {
             foreach (Entity entity in ScoreMap.MyBuilderUnits)
             {
@@ -80,6 +80,16 @@ namespace Aicup2020.MyActions
                 if (ScoreMap.Get(entity.Position).AllDamage > 0)
                 {
                     continue;
+                }
+
+                if (buildEntityType == EntityType.Turret)
+                {
+                    var range = entity.Position.Range(7);
+                    if (range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Resource) < 5 ||
+                        range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Turret) > 0)
+                    {
+                        continue;
+                    }
                 }
 
                 var buildPositions = entity.Position.BuildPositions(size);
@@ -97,6 +107,12 @@ namespace Aicup2020.MyActions
                         entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
 
                         ScoreMap.Build(position, size);
+
+                        if (Params.IsDebug)
+                        {
+                            MyStrategy.DrawRegion(position.X, position.Y, MyStrategy.Lemon, debugInterface);
+                        }
+
                         return;
                     }
                 }
