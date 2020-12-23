@@ -22,8 +22,6 @@ namespace Aicup2020.MyModel
 
         public int AllDamage => MeleeDamage + TurretDamage + RangedDamage;
 
-        public int ScoutScore;
-
         // other scores
     }
 }

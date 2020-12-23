@@ -5,43 +5,141 @@ namespace Aicup2020.MyModel
 {
     public class PriorityQueue<T>
     {
-        // I'm using an unsorted array for this example, but ideally this
-        // would be a binary heap. There's an open issue for adding a binary
-        // heap to the standard C# library: https://github.com/dotnet/corefx/issues/574
-        //
-        // Until then, find a binary heap class:
-        // * https://github.com/BlueRaja/High-Speed-Priority-Queue-for-C-Sharp
-        // * http://visualstudiomagazine.com/articles/2012/11/01/priority-queues-with-c.aspx
-        // * http://xfleury.github.io/graphsearch.html
-        // * http://stackoverflow.com/questions/102398/priority-queue-in-net
-
-        private List<Tuple<T, double>> elements = new List<Tuple<T, double>>();
-
-        public int Count
+        class Node
         {
-            get { return elements.Count; }
+            public int Priority { get; set; }
+            public T Object { get; set; }
         }
 
-        public void Enqueue(T item, double priority)
+        //object array
+        List<Node> queue = new List<Node>();
+        int heapSize = -1;
+        bool _isMinPriorityQueue;
+        public int Count { get { return queue.Count; } }
+
+        /// <summary>
+        /// If min queue or max queue
+        /// </summary>
+        /// <param name="isMinPriorityQueue"></param>
+        public PriorityQueue(bool isMinPriorityQueue = false)
         {
-            elements.Add(Tuple.Create(item, priority));
+            _isMinPriorityQueue = isMinPriorityQueue;
         }
 
+
+        /// <summary>
+        /// Enqueue the object with priority
+        /// </summary>
+        /// <param name="priority"></param>
+        /// <param name="obj"></param>
+        public void Enqueue(int priority, T obj)
+        {
+            Node node = new Node() { Priority = priority, Object = obj };
+            queue.Add(node);
+            heapSize++;
+            //Maintaining heap
+            if (_isMinPriorityQueue)
+                BuildHeapMin(heapSize);
+            else
+                BuildHeapMax(heapSize);
+        }
+        /// <summary>
+        /// Dequeue the object
+        /// </summary>
+        /// <returns></returns>
         public T Dequeue()
         {
-            int bestIndex = 0;
-
-            for (int i = 0; i < elements.Count; i++)
+            if (heapSize > -1)
             {
-                if (elements[i].Item2 < elements[bestIndex].Item2)
-                {
-                    bestIndex = i;
-                }
+                var returnVal = queue[0].Object;
+                queue[0] = queue[heapSize];
+                queue.RemoveAt(heapSize);
+                heapSize--;
+                //Maintaining lowest or highest at root based on min or max queue
+                if (_isMinPriorityQueue)
+                    MinHeapify(0);
+                else
+                    MaxHeapify(0);
+                return returnVal;
             }
+            else
+                throw new Exception("Queue is empty");
+        }
 
-            T bestItem = elements[bestIndex].Item1;
-            elements.RemoveAt(bestIndex);
-            return bestItem;
+        /// <summary>
+        /// Maintain max heap
+        /// </summary>
+        /// <param name="i"></param>
+        private void BuildHeapMax(int i)
+        {
+            while (i >= 0 && queue[(i - 1) / 2].Priority < queue[i].Priority)
+            {
+                Swap(i, (i - 1) / 2);
+                i = (i - 1) / 2;
+            }
+        }
+        /// <summary>
+        /// Maintain min heap
+        /// </summary>
+        /// <param name="i"></param>
+        private void BuildHeapMin(int i)
+        {
+            while (i >= 0 && queue[(i - 1) / 2].Priority > queue[i].Priority)
+            {
+                Swap(i, (i - 1) / 2);
+                i = (i - 1) / 2;
+            }
+        }
+        private void MaxHeapify(int i)
+        {
+            int left = ChildL(i);
+            int right = ChildR(i);
+
+            int heighst = i;
+
+            if (left <= heapSize && queue[heighst].Priority < queue[left].Priority)
+                heighst = left;
+            if (right <= heapSize && queue[heighst].Priority < queue[right].Priority)
+                heighst = right;
+
+            if (heighst != i)
+            {
+                Swap(heighst, i);
+                MaxHeapify(heighst);
+            }
+        }
+        private void MinHeapify(int i)
+        {
+            int left = ChildL(i);
+            int right = ChildR(i);
+
+            int lowest = i;
+
+            if (left <= heapSize && queue[lowest].Priority > queue[left].Priority)
+                lowest = left;
+            if (right <= heapSize && queue[lowest].Priority > queue[right].Priority)
+                lowest = right;
+
+            if (lowest != i)
+            {
+                Swap(lowest, i);
+                MinHeapify(lowest);
+            }
+        }
+
+        private void Swap(int i, int j)
+        {
+            var temp = queue[i];
+            queue[i] = queue[j];
+            queue[j] = temp;
+        }
+        private int ChildL(int i)
+        {
+            return i * 2 + 1;
+        }
+        private int ChildR(int i)
+        {
+            return i * 2 + 2;
         }
     }
 }

@@ -39,13 +39,14 @@ namespace Aicup2020.MyActions
                 range = entity.Position.Range(attackRange);
             }
 
-            var enemiesUnderAttack = new List<Entity>();
+            var enemiesUnderAttack = new HashSet<Entity>();
             foreach (var position in range)
             {
                 var cell = ScoreMap.Get(position);
                 if (cell.Entity != null &&
                     cell.Entity?.EntityType != EntityType.Resource &&
-                    cell.Entity?.PlayerId != ScoreMap.MyId)
+                    cell.Entity?.PlayerId != ScoreMap.MyId &&
+                    !enemiesUnderAttack.Contains(cell.Entity.Value))
                 {
                     enemiesUnderAttack.Add(cell.Entity.Value);
                 }
@@ -61,7 +62,7 @@ namespace Aicup2020.MyActions
             SetAttack(entity, EntityType.House, enemiesUnderAttack, entityActions);
         }
 
-        private static void SetAttack(Entity entity, EntityType attackedEntityType, List<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
+        private static void SetAttack(Entity entity, EntityType attackedEntityType, HashSet<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {

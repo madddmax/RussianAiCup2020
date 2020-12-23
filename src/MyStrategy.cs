@@ -210,15 +210,13 @@ namespace Aicup2020
                 return;
             }
 
-            Vec2Int? moveTarget = null;
-
             // AStarSearch
             Vec2Int? bestTarget = null;
             Vec2Int distantTarget = approxTarget;
             int minDistanceCost = int.MaxValue;
 
-            var frontier = new PriorityQueue<Vec2Int>();
-            frontier.Enqueue(entity.Position, 0);
+            var frontier = new PriorityQueue<Vec2Int>(true);
+            frontier.Enqueue(0, entity.Position);
 
             var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
             var costSoFar = new Dictionary<Vec2Int, int>();
@@ -301,20 +299,20 @@ namespace Aicup2020
                     {
                         costSoFar[next] = nextCost;
 
-                        frontier.Enqueue(next, nextCost);
+                        frontier.Enqueue(nextCost, next);
                         cameFrom[next] = current;
                     }
                 }
             }
 
-            moveTarget = bestTarget != null 
+            Vec2Int moveTarget = bestTarget != null 
                 ? GetMoveTarget(entity.Position, bestTarget.Value, cameFrom, Blue, debugInterface) 
                 : GetMoveTarget(entity.Position, distantTarget, cameFrom, Green, debugInterface);
 
             ScoreMap.Set(entity.Position, null);
-            ScoreMap.Set(moveTarget.Value, entity);
+            ScoreMap.Set(moveTarget, entity);
 
-            var moveAction = new MoveAction(moveTarget.Value, false, false);
+            var moveAction = new MoveAction(moveTarget, false, false);
             entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
         }
 

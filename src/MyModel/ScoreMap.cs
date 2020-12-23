@@ -19,7 +19,6 @@ namespace Aicup2020.MyModel
         public static List<Entity> MyProduction = new List<Entity>();
         public static List<Vec2Int> EnemyTargets = new List<Vec2Int>();
 
-        public static List<Entity> Resources = new List<Entity>();
         public static List<Vec2Int> BuilderUnitTargets = new List<Vec2Int>();
 
         public static List<Entity> MyBuilderUnits = new List<Entity>();
@@ -50,16 +49,32 @@ namespace Aicup2020.MyModel
         public static EntityProperties RangedBaseProperties;
         public static EntityProperties HouseProperties;
 
+        static ScoreMap()
+        {
+            for (int y = 0; y < 80; y++)
+            {
+                for (int x = 0; x < 80; x++)
+                {
+                    Map[x, y] = new ScoreCell();
+                }
+            }
+        }
+
         public static void InitMap(PlayerView playerView)
         {
             for (int y = 0; y < 80; y++)
             {
                 for (int x = 0; x < 80; x++)
                 {
-                    Map[x, y] = new ScoreCell
-                    {
-                        ScoutScore = 1
-                    };
+                    var cell = Map[x, y];
+                    cell.Entity = null;
+                    cell.ResourceScore = 0;
+                    cell.RepairScore = 0;
+                    cell.MeleeAttack = 0;
+                    cell.RangedAttack = 0;
+                    cell.MeleeDamage = 0;
+                    cell.TurretDamage = 0;
+                    cell.RangedDamage = 0;
                 }
             }
 
@@ -69,7 +84,6 @@ namespace Aicup2020.MyModel
             MyProduction.Clear();
             EnemyTargets.Clear();
 
-            Resources.Clear();
             BuilderUnitTargets.Clear();
 
             MyBuilderUnits.Clear();
@@ -114,15 +128,51 @@ namespace Aicup2020.MyModel
                 {
                     Map[entity.Position.X, entity.Position.Y].Entity = entity;
                 }
+            }
 
-                // my
+            foreach (Entity entity in playerView.Entities)
+            {
+                var properties = playerView.EntityProperties[entity.EntityType];
+
+                // collect resources
+                if (entity.EntityType == EntityType.Resource)
+                {
+                    var neighbors = entity.Position.Neighbors();
+                    foreach (var target in neighbors)
+                    {
+                        if (PassableInFuture(target))
+                        {
+                            Map[target.X, target.Y].ResourceScore = 1;
+                        }
+                    }
+                }
+
+                // enemy
                 if (entity.PlayerId != MyId &&
                     entity.EntityType != EntityType.Resource)
                 {
                     EnemyTargets.Add(entity.Position);
+
+                    var neighbors = entity.Position.Neighbors(properties.Size);
+                    foreach (var target in neighbors)
+                    {
+                        if (PassableInFuture(target))
+                        {
+                            Map[target.X, target.Y].MeleeAttack = 1;
+                        }
+                    }
+
+                    var range = entity.Position.Range(4, 3);
+                    foreach (var target in range)
+                    {
+                        if (PassableInFuture(target))
+                        {
+                            Map[target.X, target.Y].RangedAttack = 1;
+                        }
+                    }
                 }
 
-                // enemy
+                // my
                 if (entity.PlayerId == MyId)
                 {
                     // units
@@ -198,6 +248,24 @@ namespace Aicup2020.MyModel
 
                         MyProduction.Add(entity);
                     }
+
+                    // repair
+                    if (entity.Health < properties.MaxHealth &&
+                        (entity.EntityType == EntityType.BuilderBase ||
+                         entity.EntityType == EntityType.MeleeBase ||
+                         entity.EntityType == EntityType.RangedBase ||
+                         entity.EntityType == EntityType.House ||
+                         entity.EntityType == EntityType.Turret))
+                    {
+                        var neighbors = entity.Position.Neighbors(properties.Size);
+                        foreach (var target in neighbors)
+                        {
+                            if (PassableInFuture(target))
+                            {
+                                Map[target.X, target.Y].RepairScore = entity.Active ? 1 : 2;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -211,54 +279,6 @@ namespace Aicup2020.MyModel
                     }
 
                     Entity entity = Map[x, y].Entity.Value;
-                    EntityProperties entityProperties = playerView.EntityProperties[entity.EntityType];
-
-                    // scout
-                    if (entity.PlayerId != MyId &&
-                        entity.EntityType != EntityType.Resource)
-                    {
-                        var neighbors = entity.Position.Neighbors(entityProperties.SightRange);
-                        foreach (var target in neighbors)
-                        {
-                            Map[target.X, target.Y].ScoutScore = 0;
-                        }
-                    }
-
-                    // collect resources
-                    if (entity.EntityType == EntityType.Resource)
-                    {
-                        Resources.Add(entity);
-
-                        var neighbors = entity.Position.Neighbors();
-                        foreach (var target in neighbors)
-                        {
-                            if (PassableInFuture(target))
-                            {
-                                Map[target.X, target.Y].ResourceScore = 1;
-                                BuilderUnitTargets.Add(target);
-                            }
-                        }
-                    }
-
-                    // repair
-                    if (entity.PlayerId == MyId && 
-                        entity.Health < entityProperties.MaxHealth &&
-                        (entity.EntityType == EntityType.BuilderBase ||
-                         entity.EntityType == EntityType.MeleeBase ||
-                         entity.EntityType == EntityType.RangedBase ||
-                         entity.EntityType == EntityType.House ||
-                         entity.EntityType == EntityType.Turret))
-                    {
-                        var neighbors = entity.Position.Neighbors(entityProperties.Size);
-                        foreach (var target in neighbors)
-                        {
-                            if (PassableInFuture(target))
-                            {
-                                Map[target.X, target.Y].RepairScore = entity.Active ? 1 : 2;
-                                BuilderUnitTargets.Add(target);
-                            }
-                        }
-                    }
 
                     // check builders
                     if (entity.PlayerId == MyId &&
@@ -266,31 +286,6 @@ namespace Aicup2020.MyModel
                     {
                         Map[entity.Position.X, entity.Position.Y].ResourceScore = 0;
                         Map[entity.Position.X, entity.Position.Y].RepairScore = 0;
-                        BuilderUnitTargets.Remove(entity.Position);
-                    }
-
-                    // attack
-                    if (entity.PlayerId != MyId &&
-                        entity.EntityType != EntityType.Resource)
-                    {
-                        var neighbors = entity.Position.Neighbors(entityProperties.Size);
-                        foreach (var target in neighbors)
-                        {
-                            if (PassableInFuture(target))
-                            {
-                                Map[target.X, target.Y].MeleeAttack = 1;
-                            }
-                        }
-
-                        var position = new Vec2Int(x, y);
-                        var range = position.Range(4, 3);
-                        foreach (var target in range)
-                        {
-                            if (PassableInFuture(target))
-                            {
-                                Map[target.X, target.Y].RangedAttack = 1;
-                            }
-                        }
                     }
 
                     // check damage
@@ -303,7 +298,6 @@ namespace Aicup2020.MyModel
                             Map[point.X, point.Y].MeleeDamage += 5;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
-                            BuilderUnitTargets.Remove(point);
                         }
                     }
 
@@ -317,7 +311,6 @@ namespace Aicup2020.MyModel
                             Map[point.X, point.Y].TurretDamage += 5;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
-                            BuilderUnitTargets.Remove(point);
                         }
                     }
 
@@ -330,8 +323,21 @@ namespace Aicup2020.MyModel
                             Map[point.X, point.Y].RangedDamage += 5;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
-                            BuilderUnitTargets.Remove(point);
                         }
+                    }
+                }
+            }
+
+            // BuilderUnitTargets 
+            for (int y = 0; y < 80; y++)
+            {
+                for (int x = 0; x < 80; x++)
+                {
+                    var cell = Map[x, y];
+                    if (cell.ResourceScore > 0 ||
+                        cell.RepairScore > 0)
+                    {
+                        BuilderUnitTargets.Add(new Vec2Int(x, y));
                     }
                 }
             }
