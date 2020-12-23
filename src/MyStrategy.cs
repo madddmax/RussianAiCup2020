@@ -104,14 +104,14 @@ namespace Aicup2020
 
                     case EntityType.BuilderBase:
                     {
-                        var unitProperties = playerView.EntityProperties[EntityType.BuilderUnit];
-                        int unitCost = unitProperties.InitialCost + ScoreMap.MyBuilderUnits.Count;
+                        int unitCost = ScoreMap.BuilderUnitProperties.InitialCost + ScoreMap.MyBuilderUnits.Count;
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost * 2 ||
                             !IsDanger && ScoreMap.MyResource >= unitCost) &&
                             ScoreMap.MyBuilderUnits.Count < Params.MaxBuilderUnitsCount)
                         {
-                            SetBuildUnitAction(entity, EntityType.BuilderUnit, unitCost, entityActions);
+                            var approxTarget = BuilderUnitActions.GetApproxTarget(entity, entityActions);
+                            SetBuildUnitAction(entity, approxTarget, EntityType.BuilderUnit, unitCost, entityActions);
                         }
 
                         if (!entityActions.ContainsKey(entity.Id))
@@ -124,15 +124,15 @@ namespace Aicup2020
 
                     case EntityType.MeleeBase:
                     {
-                        var unitProperties = playerView.EntityProperties[EntityType.MeleeUnit];
-                        int unitCost = unitProperties.InitialCost + ScoreMap.MyMeleeUnits.Count;
+                        int unitCost = ScoreMap.MeleeUnitProperties.InitialCost + ScoreMap.MyMeleeUnits.Count;
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost ||
                              !IsDanger && ScoreMap.MyResource >= unitCost * 2) &&
                             ScoreMap.MyRangedUnits.Count * 2 >= Params.MaxRangedUnitsCount &&
                             ScoreMap.MyMeleeUnits.Count < Params.MaxMeleeUnitsCount)
                         {
-                            SetBuildUnitAction(entity, EntityType.MeleeUnit, unitCost, entityActions);
+                            var approxTarget = CombatUnitAction.GetAttackTarget(entity, entityActions);
+                            SetBuildUnitAction(entity, approxTarget, EntityType.MeleeUnit, unitCost, entityActions);
                         }
 
                         if (!entityActions.ContainsKey(entity.Id))
@@ -145,14 +145,14 @@ namespace Aicup2020
 
                     case EntityType.RangedBase:
                     {
-                        var unitProperties = playerView.EntityProperties[EntityType.RangedUnit];
-                        int unitCost = unitProperties.InitialCost + ScoreMap.MyRangedUnits.Count;
+                        int unitCost = ScoreMap.RangedUnitProperties.InitialCost + ScoreMap.MyRangedUnits.Count;
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost ||
                              !IsDanger && ScoreMap.MyResource >= unitCost * 3) &&
                             ScoreMap.MyRangedUnits.Count < Params.MaxRangedUnitsCount)
                         {
-                            SetBuildUnitAction(entity, EntityType.RangedUnit, unitCost, entityActions);
+                            var approxTarget = CombatUnitAction.GetAttackTarget(entity, entityActions);
+                            SetBuildUnitAction(entity, approxTarget, EntityType.RangedUnit, unitCost, entityActions);
                         }
 
                         if (!entityActions.ContainsKey(entity.Id))
@@ -186,20 +186,32 @@ namespace Aicup2020
             return isDanger;
         }
 
-        private static void SetBuildUnitAction(Entity entity, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
+        private static void SetBuildUnitAction(Entity entity, Vec2Int approxTarget, EntityType buildUnit, int unitCost, Dictionary<int, EntityAction> entityActions)
         {
+            Vec2Int? target = null;
+            int minDistance = int.MaxValue;
+
             var neighbors = entity.Position.Neighbors(5);
             foreach (var position in neighbors)
             {
                 if (ScoreMap.Passable(position))
                 {
-                    var buildAction = new BuildAction(buildUnit, position);
-                    entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
-
-                    ScoreMap.Build(position, 1);
-                    ScoreMap.MyResource -= unitCost;
-                    break;
+                    int distance = position.Distance(approxTarget);
+                    if (distance < minDistance)
+                    {
+                        target = position;
+                        minDistance = distance;
+                    }
                 }
+            }
+
+            if (target != null)
+            {
+                var buildAction = new BuildAction(buildUnit, target.Value);
+                entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
+
+                ScoreMap.Build(target.Value, 1);
+                ScoreMap.MyResource -= unitCost;
             }
         }
 
