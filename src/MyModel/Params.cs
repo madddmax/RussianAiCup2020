@@ -14,7 +14,7 @@
 
         public const int MaxMeleeUnitsCount = 0;
 
-        public const int MaxRangedUnitsCount = 45;
+        public static int MaxRangedUnitsCount = 45;
 
         public const int MaxAttackRangedUnitsCount = 30;
 

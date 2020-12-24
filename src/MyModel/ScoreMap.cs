@@ -150,7 +150,7 @@ namespace Aicup2020.MyModel
                     {
                         if (PassableInFuture(target))
                         {
-                            Map[target.X, target.Y].ResourceScore = 1;
+                            Map[target.X, target.Y].ResourceScore += 1;
                         }
                     }
                 }
@@ -279,11 +279,12 @@ namespace Aicup2020.MyModel
                          entity.EntityType == EntityType.Turret))
                     {
                         var neighbors = entity.Position.Neighbors(properties.Size);
+                        var buildersCount = neighbors.Count(n => Get(n).Entity?.EntityType == EntityType.BuilderUnit);
                         foreach (var target in neighbors)
                         {
-                            if (PassableInFuture(target))
+                            if (Passable(target))
                             {
-                                Map[target.X, target.Y].RepairScore = entity.Active ? 1 : 2;
+                                Map[target.X, target.Y].RepairScore = entity.Active && buildersCount > 2 ? 1 : 2;
                             }
                         }
                     }

@@ -25,7 +25,8 @@ namespace Aicup2020
             if (playerView.CurrentTick == 10 && playerView.Players.Length == 2)
             {
                 Params.MaxBuilderUnitsCount += 20;
-                Params.MaxHouseCount += 4;
+                Params.MaxRangedUnitsCount += 10;
+                Params.MaxHouseCount += 6;
             }
 
             var entityActions = new Dictionary<int, EntityAction>();
@@ -44,7 +45,8 @@ namespace Aicup2020
             }
 
             // building turret
-            if (ScoreMap.MyActiveRangedBases.Count > 0 &&
+            if (playerView.CurrentTick >= 300 &&
+                ScoreMap.MyActiveRangedBases.Count > 0 &&
                 ScoreMap.Limit >= Params.TurretBuildingLimit &&
                 ScoreMap.MyResource >= ScoreMap.TurretProperties.InitialCost &&
                 ScoreMap.MyNotActiveTurrets.Count <= 1)
@@ -241,16 +243,30 @@ namespace Aicup2020
                 return;
             }
 
-            // AStarSearch
-            Vec2Int? bestTarget = null;
+            var bestTarget = ASearchMove(entity, approxTarget, out var cameFrom, out var costSoFar);
+            Vec2Int moveTarget = GetMoveTarget(entity.Position, bestTarget, cameFrom, Blue, debugInterface);
+            ScoreMap.Set(entity.Position, null);
+            ScoreMap.Set(moveTarget, entity);
+
+            var moveAction = new MoveAction(moveTarget, false, false);
+            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
+        }
+
+        private static Vec2Int ASearchMove(
+            Entity entity,
+            Vec2Int approxTarget,
+            out Dictionary<Vec2Int, Vec2Int> cameFrom,
+            out Dictionary<Vec2Int, int> costSoFar)
+        {
             Vec2Int distantTarget = approxTarget;
+            Vec2Int? bestTarget = null;
             int minDistanceCost = int.MaxValue;
 
             var frontier = new PriorityQueue<Vec2Int>(true);
             frontier.Enqueue(0, entity.Position);
 
-            var cameFrom = new Dictionary<Vec2Int, Vec2Int>();
-            var costSoFar = new Dictionary<Vec2Int, int>();
+            cameFrom = new Dictionary<Vec2Int, Vec2Int>();
+            costSoFar = new Dictionary<Vec2Int, int>();
 
             cameFrom[entity.Position] = entity.Position;
             costSoFar[entity.Position] = 0;
@@ -262,12 +278,29 @@ namespace Aicup2020
 
                 if (entity.EntityType == EntityType.BuilderUnit &&
                     (
-                        currentCell.ResourceScore > 0 ||
-                        currentCell.RepairScore > 0
+                        currentCell.RepairScore > 1 ||
+                        currentCell.ResourceScore > 1
                     )
                 )
                 {
                     bestTarget = current;
+                    break;
+                }
+
+                if (bestTarget == null &&
+                    entity.EntityType == EntityType.BuilderUnit &&
+                    (
+                        currentCell.RepairScore > 0 ||
+                        currentCell.ResourceScore > 0
+                    )
+                )
+                {
+                    bestTarget = current;
+                }
+
+                if (bestTarget != null &&
+                    costSoFar[current] - costSoFar[bestTarget.Value] > 1)
+                {
                     break;
                 }
 
@@ -297,7 +330,7 @@ namespace Aicup2020
                 {
                     var nextCell = ScoreMap.Get(next);
                     if (nextCell.Entity != null &&
-                        (entity.EntityType == EntityType.BuilderUnit || 
+                        (entity.EntityType == EntityType.BuilderUnit ||
                          nextCell.Entity?.EntityType != EntityType.Resource))
                     {
                         // todo учесть юнитов
@@ -326,7 +359,7 @@ namespace Aicup2020
                         nextCost += 2;
                     }
 
-                    if (!costSoFar.ContainsKey(next) || 
+                    if (!costSoFar.ContainsKey(next) ||
                         nextCost < costSoFar[next])
                     {
                         costSoFar[next] = nextCost;
@@ -337,15 +370,7 @@ namespace Aicup2020
                 }
             }
 
-            Vec2Int moveTarget = bestTarget != null 
-                ? GetMoveTarget(entity.Position, bestTarget.Value, cameFrom, Blue, debugInterface) 
-                : GetMoveTarget(entity.Position, distantTarget, cameFrom, Green, debugInterface);
-
-            ScoreMap.Set(entity.Position, null);
-            ScoreMap.Set(moveTarget, entity);
-
-            var moveAction = new MoveAction(moveTarget, false, false);
-            entityActions.Add(entity.Id, new EntityAction(moveAction, null, null, null));
+            return bestTarget ?? distantTarget;
         }
 
         private static Vec2Int GetMoveTarget(Vec2Int current, Vec2Int target, Dictionary<Vec2Int, Vec2Int> cameFrom, Color color, DebugInterface debugInterface)
