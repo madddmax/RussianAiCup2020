@@ -297,7 +297,8 @@ namespace Aicup2020
                 {
                     var nextCell = ScoreMap.Get(next);
                     if (nextCell.Entity != null &&
-                        nextCell.Entity?.EntityType != EntityType.Resource)
+                        (entity.EntityType == EntityType.BuilderUnit || 
+                         nextCell.Entity?.EntityType != EntityType.Resource))
                     {
                         // todo учесть юнитов
                         continue;

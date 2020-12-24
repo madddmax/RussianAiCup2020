@@ -100,7 +100,7 @@ namespace Aicup2020.MyActions
                     var neighbors = position.Neighbors(size);
 
                     if (ScoreMap.Passable(position, size) &&
-                        diagonals.All(ScoreMap.PassableInFuture) &&
+                        diagonals.All(ScoreMap.PassableInFutureOrResource) &&
                         diagonals.All(d => ScoreMap.Get(d).AllDamage == 0) &&
                         neighbors.All(d => ScoreMap.Get(d).AllDamage == 0))
                     {
