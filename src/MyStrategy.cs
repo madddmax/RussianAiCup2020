@@ -312,7 +312,7 @@ namespace Aicup2020
 
                     if (entity.EntityType == EntityType.RangedUnit)
                     {
-                        nextCost += nextCell.MeleeDamage + nextCell.TurretDamage;
+                        nextCost += nextCell.AllDamage;
                     }
 
                     if (entity.EntityType == EntityType.MeleeUnit)

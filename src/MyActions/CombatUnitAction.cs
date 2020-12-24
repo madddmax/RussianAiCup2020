@@ -52,29 +52,72 @@ namespace Aicup2020.MyActions
                 }
             }
 
-            SetAttack(entity, EntityType.RangedUnit, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.BuilderUnit, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.MeleeUnit, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.Turret, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.RangedBase, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.MeleeBase, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.BuilderBase, enemiesUnderAttack, entityActions);
-            SetAttack(entity, EntityType.House, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.RangedUnit, 1, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.BuilderUnit, 1, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.MeleeUnit, 1, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.Turret, 2, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.RangedBase, 5, enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.MeleeBase, 5,  enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.BuilderBase, 5,  enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.House, 3,  enemiesUnderAttack, entityActions);
+            SetAttack(entity, EntityType.Wall, 1, enemiesUnderAttack, entityActions);
         }
 
-        private static void SetAttack(Entity entity, EntityType attackedEntityType, HashSet<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
+        private static void SetAttack(Entity entity, EntityType attackedEntityType, int attackedEntitySize, HashSet<Entity> enemiesUnderAttack, Dictionary<int, EntityAction> entityActions)
         {
             if (entityActions.ContainsKey(entity.Id))
             {
                 return;
             }
 
-            bool hasEnemy = enemiesUnderAttack.Any(e => e.EntityType == attackedEntityType);
-            if (hasEnemy)
+            Entity? bestEnemy = null;
+            var enemies = enemiesUnderAttack.Where(e => e.EntityType == attackedEntityType).ToList();
+            foreach (var enemy in enemies)
             {
-                var enemy = enemiesUnderAttack.First(e => e.EntityType == attackedEntityType);
-                var attackAction = new AttackAction(enemy.Id, null);
+                if (bestEnemy == null ||
+                    enemy.Health < bestEnemy.Value.Health)
+                {
+                    bestEnemy = enemy;
+                }
+
+                if (enemy.Health == bestEnemy.Value.Health &&
+                    entity.Position.Distance(enemy.Position) > entity.Position.Distance(bestEnemy.Value.Position))
+                {
+                    bestEnemy = enemy;
+                }
+            }
+
+            if (bestEnemy != null)
+            {
+                var attackAction = new AttackAction(bestEnemy.Value.Id, null);
                 entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
+
+                var newEnemyEntity = bestEnemy.Value.Health > 5
+                    ? new Entity
+                    {
+                        Active = bestEnemy.Value.Active,
+                        EntityType = bestEnemy.Value.EntityType,
+                        Health = bestEnemy.Value.Health - 5,
+                        Id = bestEnemy.Value.Id,
+                        Position = bestEnemy.Value.Position,
+                        PlayerId = bestEnemy.Value.PlayerId
+                    }
+                    : (Entity?)null;
+
+                if (attackedEntitySize > 1)
+                {
+                    for (int y = 0; y < attackedEntitySize; y++)
+                    {
+                        for (int x = 0; x < attackedEntitySize; x++)
+                        {
+                            ScoreMap.Set(bestEnemy.Value.Position.X + x, bestEnemy.Value.Position.Y + y, newEnemyEntity);
+                        }
+                    }
+                }
+                else
+                {
+                    ScoreMap.Set(bestEnemy.Value.Position, newEnemyEntity);
+                }
             }
         }
 
