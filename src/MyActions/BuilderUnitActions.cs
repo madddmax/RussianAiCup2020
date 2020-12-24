@@ -84,9 +84,10 @@ namespace Aicup2020.MyActions
 
                 if (buildEntityType == EntityType.Turret)
                 {
-                    var range = entity.Position.Range(7);
-                    if (range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Resource) < 5 ||
-                        range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Turret) > 0)
+                    var range = entity.Position.Range(10);
+                    if (range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Resource) < 25 ||
+                        range.Any(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Turret) ||
+                        range.Any(e => ScoreMap.Get(e).AllDamage > 0))
                     {
                         continue;
                     }

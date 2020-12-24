@@ -10,11 +10,11 @@
 
         public const int TurretBuildingLimit = 45;
 
-        public static int MaxBuilderUnitsCount = 50;
+        public static int MaxBuilderUnitsCount = 55;
 
         public const int MaxMeleeUnitsCount = 0;
 
-        public const int MaxRangedUnitsCount = 50;
+        public const int MaxRangedUnitsCount = 45;
 
         public const int MaxAttackRangedUnitsCount = 30;
 

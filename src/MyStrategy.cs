@@ -126,6 +126,7 @@ namespace Aicup2020
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost * 2 ||
                             !IsDanger && ScoreMap.MyResource >= unitCost) &&
+                            ScoreMap.MyBuilderUnits.Count < ScoreMap.BuilderUnitTargets.Count &&
                             ScoreMap.MyBuilderUnits.Count < Params.MaxBuilderUnitsCount)
                         {
                             var approxTarget = BuilderUnitActions.GetApproxTarget(entity, entityActions);

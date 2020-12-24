@@ -157,7 +157,8 @@ namespace Aicup2020.MyModel
 
                 // enemy
                 if (entity.PlayerId != MyId &&
-                    entity.EntityType != EntityType.Resource)
+                    entity.EntityType != EntityType.Resource &&
+                    (entity.EntityType != EntityType.Turret || !entity.Active))
                 {
                     EnemyTargets.Add(entity.Position);
 
@@ -315,7 +316,7 @@ namespace Aicup2020.MyModel
                         var range = entity.Position.Range(2);
                         foreach (var point in range)
                         {
-                            Map[point.X, point.Y].MeleeDamage += 5;
+                            Map[point.X, point.Y].MeleeDamage += 10;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
                         }
@@ -329,7 +330,7 @@ namespace Aicup2020.MyModel
                         var range = position.Range(5);
                         foreach (var point in range)
                         {
-                            Map[point.X, point.Y].TurretDamage += 5;
+                            Map[point.X, point.Y].TurretDamage += 200;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
                         }
@@ -341,7 +342,7 @@ namespace Aicup2020.MyModel
                         var range = entity.Position.Range(6);
                         foreach (var point in range)
                         {
-                            Map[point.X, point.Y].RangedDamage += 5;
+                            Map[point.X, point.Y].RangedDamage += 10;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
                         }
