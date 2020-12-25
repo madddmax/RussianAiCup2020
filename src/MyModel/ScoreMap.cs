@@ -6,6 +6,7 @@ namespace Aicup2020.MyModel
 {
     public static class ScoreMap
     {
+        public static readonly Vec2Int MyHouseBase = new Vec2Int(0, 0);
         public static readonly Vec2Int MyBase = new Vec2Int(20, 20);
         public static readonly Vec2Int EnemyBase = new Vec2Int(60, 60);
 

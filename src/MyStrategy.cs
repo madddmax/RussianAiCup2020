@@ -24,9 +24,9 @@ namespace Aicup2020
 
             if (playerView.CurrentTick == 10 && playerView.Players.Length == 2)
             {
-                Params.MaxBuilderUnitsCount += 20;
-                Params.MaxRangedUnitsCount += 10;
-                Params.MaxHouseCount += 6;
+                Params.MaxBuilderUnitsCount += 30;
+                Params.MaxRangedUnitsCount += 20;
+                Params.MaxHouseCount += 10;
             }
 
             var entityActions = new Dictionary<int, EntityAction>();
@@ -45,9 +45,9 @@ namespace Aicup2020
             }
 
             // building turret
-            if (playerView.CurrentTick >= 300 &&
+            if ((playerView.Players.Length > 2 || playerView.CurrentTick >= 300) &&
                 ScoreMap.MyActiveRangedBases.Count > 0 &&
-                ScoreMap.Limit >= Params.TurretBuildingLimit &&
+                (ScoreMap.Limit >= Params.TurretBuildingLimit || playerView.CurrentTick >= 300) &&
                 ScoreMap.MyResource >= ScoreMap.TurretProperties.InitialCost &&
                 ScoreMap.MyNotActiveTurrets.Count <= 1)
             {

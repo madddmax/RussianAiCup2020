@@ -70,6 +70,10 @@ namespace Aicup2020.MyActions
 
         public static void SetBuild(EntityType buildEntityType, int size, Dictionary<int, EntityAction> entityActions, DebugInterface debugInterface)
         {
+            Entity? builder = null;
+            Vec2Int? buildPosition = null;
+            int minDistance = int.MaxValue;
+
             foreach (Entity entity in ScoreMap.MyBuilderUnits)
             {
                 if (entityActions.ContainsKey(entity.Id))
@@ -77,17 +81,16 @@ namespace Aicup2020.MyActions
                     continue;
                 }
 
-                if (ScoreMap.Get(entity.Position).AllDamage > 0)
+                var range = entity.Position.Range(10);
+                if (range.Any(e => ScoreMap.Get(e).AllDamage > 0))
                 {
                     continue;
                 }
 
                 if (buildEntityType == EntityType.Turret)
                 {
-                    var range = entity.Position.Range(10);
                     if (range.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Resource) < 25 ||
-                        range.Any(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Turret) ||
-                        range.Any(e => ScoreMap.Get(e).AllDamage > 0))
+                        range.Any(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.Turret))
                     {
                         continue;
                     }
@@ -97,25 +100,34 @@ namespace Aicup2020.MyActions
                 foreach (var position in buildPositions)
                 {
                     var diagonals = position.Diagonals(size);
-                    var neighbors = position.Neighbors(size);
 
                     if (ScoreMap.Passable(position, size) &&
-                        diagonals.All(ScoreMap.PassableInFutureOrResource) &&
-                        diagonals.All(d => ScoreMap.Get(d).AllDamage == 0) &&
-                        neighbors.All(d => ScoreMap.Get(d).AllDamage == 0))
+                        diagonals.All(ScoreMap.PassableInFutureOrResource))
                     {
-                        var buildAction = new BuildAction(buildEntityType, position);
-                        entityActions.Add(entity.Id, new EntityAction(null, buildAction, null, null));
+                        int distance = buildEntityType == EntityType.House
+                            ? position.Distance(ScoreMap.MyHouseBase)
+                            : position.Distance(ScoreMap.EnemyBase);
 
-                        ScoreMap.Build(position, size);
-
-                        if (Params.IsDebug)
+                        if (distance < minDistance)
                         {
-                            MyStrategy.DrawRegion(position.X, position.Y, MyStrategy.Lemon, debugInterface);
+                            builder = entity;
+                            buildPosition = position;
+                            minDistance = distance;
                         }
-
-                        return;
                     }
+                }
+            }
+
+            if (builder != null && buildPosition != null)
+            {
+                var buildAction = new BuildAction(buildEntityType, buildPosition.Value);
+                entityActions.Add(builder.Value.Id, new EntityAction(null, buildAction, null, null));
+
+                ScoreMap.Build(buildPosition.Value, size);
+
+                if (Params.IsDebug)
+                {
+                    MyStrategy.DrawRegion(buildPosition.Value.X, buildPosition.Value.Y, MyStrategy.Lemon, debugInterface);
                 }
             }
         }
