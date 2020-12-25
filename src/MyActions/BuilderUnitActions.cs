@@ -43,6 +43,10 @@ namespace Aicup2020.MyActions
                 return;
             }
 
+            Entity? builder = null;
+            Entity? repairEntity = null;
+            int maxHealth = int.MinValue;
+
             var neighbors = entity.Position.Neighbors();
             foreach (var target in neighbors)
             {
@@ -61,10 +65,19 @@ namespace Aicup2020.MyActions
                      targetEntity.Value.EntityType == EntityType.House ||
                      targetEntity.Value.EntityType == EntityType.Turret))
                 {
-                    var repairAction = new RepairAction(targetEntity.Value.Id);
-                    entityActions.Add(entity.Id, new EntityAction(null, null, null, repairAction));
-                    break;
+                    if (targetEntity.Value.Health > maxHealth)
+                    {
+                        builder = entity;
+                        repairEntity = targetEntity;
+                        maxHealth = targetEntity.Value.Health;
+                    }
                 }
+            }
+
+            if (builder != null && repairEntity != null)
+            {
+                var repairAction = new RepairAction(repairEntity.Value.Id);
+                entityActions.Add(builder.Value.Id, new EntityAction(null, null, null, repairAction));
             }
         }
 
@@ -144,16 +157,27 @@ namespace Aicup2020.MyActions
                 return;
             }
 
+            Entity? resource = null;
+            int minHealth = int.MaxValue;
+
             var neighbors = entity.Position.Neighbors();
             foreach (var target in neighbors)
             {
                 var targetEntity = ScoreMap.Get(target).Entity;
                 if (targetEntity?.EntityType == EntityType.Resource)
                 {
-                    var attackAction = new AttackAction(targetEntity.Value.Id, null);
-                    entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
-                    break;
+                    if (targetEntity.Value.Health < minHealth)
+                    {
+                        resource = targetEntity;
+                        minHealth = targetEntity.Value.Health;
+                    }
                 }
+            }
+
+            if (resource != null)
+            {
+                var attackAction = new AttackAction(resource.Value.Id, null);
+                entityActions.Add(entity.Id, new EntityAction(null, null, attackAction, null));
             }
         }
     }

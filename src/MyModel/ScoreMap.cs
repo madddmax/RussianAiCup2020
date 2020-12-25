@@ -16,6 +16,7 @@ namespace Aicup2020.MyModel
 
         public static int MyId;
         public static int MyResource;
+        public static bool AnyRepairScoreMoreThanOne;
 
         public static List<Entity> MyProduction = new List<Entity>();
         public static List<Vec2Int> EnemyTargets = new List<Vec2Int>();
@@ -85,6 +86,7 @@ namespace Aicup2020.MyModel
 
             MyId = playerView.MyId;
             MyResource = playerView.Players[MyId - 1].Resource;
+            AnyRepairScoreMoreThanOne = false;
 
             MyProduction.Clear();
             EnemyTargets.Clear();
@@ -285,7 +287,11 @@ namespace Aicup2020.MyModel
                         {
                             if (Passable(target))
                             {
-                                Map[target.X, target.Y].RepairScore = entity.Active && buildersCount > 2 ? 1 : 2;
+                                Map[target.X, target.Y].RepairScore = entity.Active && buildersCount > 3 ? 1 : 2;
+                                if (Map[target.X, target.Y].RepairScore == 2)
+                                {
+                                    AnyRepairScoreMoreThanOne = true;
+                                }
                             }
                         }
                     }

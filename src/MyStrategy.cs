@@ -35,13 +35,42 @@ namespace Aicup2020
             IsDanger = DangerCheck();
 
             // repairing
+            Entity? builder = null;
+            Vec2Int? moveTarget = null;
+            int minDistance = int.MaxValue;
+
             foreach (Entity entity in playerView.Entities)
             {
-                if (entity.PlayerId == ScoreMap.MyId &&
-                    entity.EntityType == EntityType.BuilderUnit)
+                if (entity.PlayerId != ScoreMap.MyId || entity.EntityType != EntityType.BuilderUnit)
                 {
-                    BuilderUnitActions.SetRepair(playerView, entity, entityActions);
+                    continue;
                 }
+
+                BuilderUnitActions.SetRepair(playerView, entity, entityActions);
+                if (!ScoreMap.AnyRepairScoreMoreThanOne || entityActions.ContainsKey(entity.Id))
+                {
+                    continue;
+                }
+
+                var approxTarget = BuilderUnitActions.GetApproxTarget(entity, entityActions);
+
+                var bestTarget = ASearchMove(entity, approxTarget, out var cameFrom, out var costSoFar);
+                var cell = ScoreMap.Get(bestTarget);
+                if (cell.RepairScore > 1 && costSoFar[bestTarget] < minDistance)
+                {
+                    builder = entity;
+                    moveTarget = GetMoveTarget(builder.Value.Position, bestTarget, cameFrom, Blue, debugInterface);
+                    minDistance = costSoFar[bestTarget];
+                }
+            }
+
+            if (builder != null && moveTarget != null)
+            {
+                ScoreMap.Set(builder.Value.Position, null);
+                ScoreMap.Set(moveTarget.Value, builder.Value);
+
+                var moveAction = new MoveAction(moveTarget.Value, false, false);
+                entityActions.Add(builder.Value.Id, new EntityAction(moveAction, null, null, null));
             }
 
             // building turret
@@ -118,6 +147,11 @@ namespace Aicup2020
 
                     case EntityType.Turret:
                     {
+                        if (!entity.Active)
+                        {
+                            continue;
+                        }
+
                         CombatUnitAction.SetAttack(entity, 5, 2, entityActions);
                         continue;
                     }
@@ -166,6 +200,11 @@ namespace Aicup2020
 
                     case EntityType.RangedBase:
                     {
+                        if (!entity.Active)
+                        {
+                            continue;
+                        }
+
                         int unitCost = ScoreMap.RangedUnitProperties.InitialCost + ScoreMap.MyRangedUnits.Count;
 
                         if ((IsDanger && ScoreMap.MyResource >= unitCost ||
@@ -299,7 +338,7 @@ namespace Aicup2020
                 }
 
                 if (bestTarget != null &&
-                    costSoFar[current] - costSoFar[bestTarget.Value] > 1)
+                    costSoFar[current] - costSoFar[bestTarget.Value] > 5)
                 {
                     break;
                 }

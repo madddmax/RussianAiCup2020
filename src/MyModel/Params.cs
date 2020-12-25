@@ -6,7 +6,7 @@
 
         public const int MaxSearchMove = 180;
 
-        public const int RangedBaseBuildingLimit = 30;
+        public const int RangedBaseBuildingLimit = 35;
 
         public const int TurretBuildingLimit = 40;
 
@@ -15,10 +15,6 @@
         public const int MaxMeleeUnitsCount = 0;
 
         public static int MaxRangedUnitsCount = 45;
-
-        public const int MaxAttackRangedUnitsCount = 30;
-
-        public const int MaxDefenceRangedUnitsCount = 30;
 
         public static int MaxHouseCount = 18;
 
