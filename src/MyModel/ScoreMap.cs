@@ -332,7 +332,8 @@ namespace Aicup2020.MyModel
                         var range = position.Range(5);
                         foreach (var point in range)
                         {
-                            Map[point.X, point.Y].TurretDamage += 200;
+                            var healthCoeff = entity.Health / 5;
+                            Map[point.X, point.Y].TurretDamage += 10 * healthCoeff;
                             Map[point.X, point.Y].ResourceScore = 0;
                             Map[point.X, point.Y].RepairScore = 0;
                         }
