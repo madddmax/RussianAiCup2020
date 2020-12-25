@@ -24,6 +24,7 @@ namespace Aicup2020
 
             if (playerView.CurrentTick == 10 && playerView.Players.Length == 2)
             {
+                Params.RangedBaseBuildingLimit = 35;
                 Params.MaxBuilderUnitsCount += 30;
                 Params.MaxRangedUnitsCount += 20;
                 Params.MaxHouseCount += 10;

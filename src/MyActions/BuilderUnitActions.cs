@@ -19,7 +19,7 @@ namespace Aicup2020.MyActions
 
             foreach (var target in ScoreMap.BuilderUnitTargets)
             {
-                var distance = target.Distance(entity.Position);
+                var distance = entity.EntityType == EntityType.BuilderBase ? target.Distance(entity.Position.X + 5, entity.Position.Y + 5) : target.Distance(entity.Position);
 
                 if (nearestTarget == null || distance < minDistance)
                 {
@@ -109,11 +109,26 @@ namespace Aicup2020.MyActions
                     }
                 }
 
+                if (buildEntityType == EntityType.House)
+                {
+                    var range2 = entity.Position.Range(5);
+                    if (range2.Count(e => ScoreMap.Get(e).Entity?.EntityType == EntityType.BuilderUnit) == 0)
+                    {
+                        continue;
+                    }
+                }
+
                 var buildPositions = entity.Position.BuildPositions(size);
                 foreach (var position in buildPositions)
                 {
-                    var diagonals = position.Diagonals(size);
+                    if (buildEntityType == EntityType.RangedBase &&
+                        position.X <= 15 &&
+                        position.Y <= 15)
+                    {
+                        continue;
+                    }
 
+                    var diagonals = position.Diagonals(size);
                     if (ScoreMap.Passable(position, size) &&
                         diagonals.All(ScoreMap.PassableInFutureOrResource))
                     {
@@ -126,6 +141,34 @@ namespace Aicup2020.MyActions
                             builder = entity;
                             buildPosition = position;
                             minDistance = distance;
+                        }
+                    }
+                }
+            }
+
+            if (buildEntityType == EntityType.House && builder == null && buildPosition == null)
+            {
+                foreach (Entity entity in ScoreMap.MyBuilderUnits)
+                {
+                    if (entityActions.ContainsKey(entity.Id))
+                    {
+                        continue;
+                    }
+
+                    var buildPositions = entity.Position.BuildPositions(size);
+                    foreach (var position in buildPositions)
+                    {
+                        var diagonals = position.Diagonals(size);
+                        if (ScoreMap.Passable(position, size) &&
+                            diagonals.All(ScoreMap.PassableInFutureOrResource))
+                        {
+                            int distance = position.Distance(ScoreMap.MyHouseBase);
+                            if (distance < minDistance)
+                            {
+                                builder = entity;
+                                buildPosition = position;
+                                minDistance = distance;
+                            }
                         }
                     }
                 }

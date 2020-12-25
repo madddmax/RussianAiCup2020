@@ -6,7 +6,7 @@
 
         public const int MaxSearchMove = 180;
 
-        public const int RangedBaseBuildingLimit = 35;
+        public static int RangedBaseBuildingLimit = 30;
 
         public const int TurretBuildingLimit = 40;
 
